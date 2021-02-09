@@ -4,7 +4,6 @@ var campaignLandingPageId = 2020;
 var clickUrlParameterId = 0;
 
 
-
 function trackUrlParameters(callback) {
     var xmlHttp = new XMLHttpRequest();
     xmlHttp.onload = function () {
@@ -113,8 +112,10 @@ function getParameterByName(name) {
     return decodeURIComponent(results[2].replace(/\+/g, " "));
 }
 
+if (typeof getParameterByName() == 'function') {
 //set cookie
-if (getParameterByName('dsp') == "F70624" || getParameterByName('dsp') == "FACD02" || getParameterByName('dsp') == "010101") {
-    trackUrlParameters();
-    console.log(clickUrlParameterId);
+    if (getParameterByName('dsp') == "F70624" || getParameterByName('dsp') == "FACD02" || getParameterByName('dsp') == "010101") {
+        trackUrlParameters();
+        console.log(clickUrlParameterId);
+    }
 }
