@@ -112,10 +112,10 @@ function getParameterByName(name) {
     return decodeURIComponent(results[2].replace(/\+/g, " "));
 }
 
-if (typeof getParameterByName("") == 'function') {
+console.log("before gen cookie");
 //set cookie
-    if (getParameterByName('dsp') == "F70624" || getParameterByName('dsp') == "FACD02" || getParameterByName('dsp') == "010101") {
-        trackUrlParameters();
-        console.log(clickUrlParameterId);
-    }
+if (getParameterByName('dsp') == "F70624" || getParameterByName('dsp') == "FACD02" || getParameterByName('dsp') == "010101") {
+    trackUrlParameters();
+    console.log(clickUrlParameterId);
 }
+
