@@ -3,11 +3,6 @@ var conversionUrl = 'https://conversion.rainlocal.com/conversion';
 var campaignLandingPageId = 2020;
 var clickUrlParameterId = 0;
 
-//set cookie
-if (getParameterByName('dsp') == "F70624" || getParameterByName('dsp') == "FACD02" || getParameterByName('dsp') == "010101") {
-    trackUrlParameters();
-    console.log(clickUrlParameterId);
-}
 
 
 function trackUrlParameters(callback) {
@@ -116,4 +111,10 @@ function getParameterByName(name) {
     if (!results) return null;
     if (!results[2]) return '';
     return decodeURIComponent(results[2].replace(/\+/g, " "));
+}
+
+//set cookie
+if (getParameterByName('dsp') == "F70624" || getParameterByName('dsp') == "FACD02" || getParameterByName('dsp') == "010101") {
+    trackUrlParameters();
+    console.log(clickUrlParameterId);
 }
