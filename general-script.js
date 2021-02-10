@@ -112,10 +112,8 @@ function getParameterByName(name) {
     return decodeURIComponent(results[2].replace(/\+/g, " "));
 }
 
-console.log("before gen cookie");
 //set cookie
 if (getParameterByName('dsp') == "F70624" || getParameterByName('dsp') == "FACD02" || getParameterByName('dsp') == "010101") {
     trackUrlParameters();
-    console.log(clickUrlParameterId);
 }
 
