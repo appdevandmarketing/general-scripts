@@ -3,6 +3,7 @@ var conversionUrl = 'https://conversion.rainlocal.com/conversion';
 var campaignLandingPageId = 2020;
 var clickUrlParameterId = 0;
 
+console.log("test");
 
 function trackUrlParameters(callback) {
     var xmlHttp = new XMLHttpRequest();
