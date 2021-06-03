@@ -1,24 +1,123 @@
+var trackingUrl_sn = 'https://conversion.rainlocal.com/v2/click';
+var conversionUrl_sn = 'https://conversion.rainlocal.com/v2/conversion';
+var shouldRequestLocation_sn = false;
+var validSource_sn = false;
+var sessionUuid_sn = null;
+
+var location_sn = {
+    lat: 0,
+    lng: 0
+}
+
+function track_sn(name) {
+    if (!validSource_sn) {
+        return;
+    }
+
+    if (sessionUuid_sn) {
+        post_sn(conversionUrl_sn, {name: name, sessionUuid: sessionUuid_sn}, function (response) {
+        });
+    } else {
+        console.log("Session not initiated or not valid")
+    }
+}
+
+function isValidSource_sn() {
+    var validSources = ["rain", "rain-fb", "rain-7246", "rain-6539", "rain-2044", "rain-5086"];
+    var source = getQueryParam_sn("utm_source")
+
+    validSources.forEach(function (value) {
+        if (value == source) {
+            validSource_sn = true;
+        }
+    })
+}
+
+function post_sn(url, data, callback) {
+    var xmlHttp = new XMLHttpRequest();
+    xmlHttp.onload = function () {
+        if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
+            if (callback) {
+                callback(JSON.parse(xmlHttp.responseText));
+            }
+        }
+    }
+
+    xmlHttp.open("post", url, false);
+    xmlHttp.setRequestHeader("Content-Type", "application/json");
+    xmlHttp.setRequestHeader("Cross-Domain", "true");
+    xmlHttp.send(JSON.stringify(data));
+}
+
+function getSession_sn() {
+
+    if (sessionUuid_sn || !validSource_sn) {
+        return;
+    }
+
+    var sessionObj = {
+        url: window.location.href,
+        lat: location_sn.lat,
+        lng: location_sn.lng
+    }
+
+    post_sn(trackingUrl_sn, sessionObj, function (response) {
+        sessionUuid_sn = response.value
+    });
+}
+
+function loadLocation_sn(callback) {
+    if (shouldRequestLocation_sn && ("geolocation" in navigator)) {
+        navigator.geolocation.getCurrentPosition(function (position) {
+            location_sn.lat = position.coords.latitude
+            location_sn.lng = position.coords.longitude
+            callback()
+        });
+    }
+    callback()
+}
+
+/*
+ * ref. https://stackoverflow.com/questions/831030/
+ * a function that retrieves the value of a query parameter
+ */
+function getQueryParam_sn(name) {
+    if (name = (new RegExp('[?&]' + encodeURIComponent(name) + '=([^&]*)')).exec(window.location.search)) {
+        return decodeURIComponent(name[1]);
+    }
+}
+
+function init_sn() {
+    isValidSource_sn();
+    loadLocation_sn(getSession_sn);
+}
+
 var trackingUrl = 'https://conversion.rainlocal.com/click';
 var conversionUrl = 'https://conversion.rainlocal.com/conversion';
 var campaignLandingPageId = 2020;
 var clickUrlParameterId = 0;
 
 function trackUrlParameters(callback) {
-    var xmlHttp = new XMLHttpRequest();
-    xmlHttp.onload = function () {
-        if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
-            clickUrlParameterId = JSON.parse(xmlHttp.responseText).id;
-            callback;
+    if (clickUrlParameterId == 0) {
+        var xmlHttp = new XMLHttpRequest();
+        xmlHttp.onload = function () {
+            if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
+                clickUrlParameterId = JSON.parse(xmlHttp.responseText).id;
+                callback;
+            }
         }
+        xmlHttp.open("post", trackingUrl, false);
+        xmlHttp.setRequestHeader("Content-Type", "application/json");
+        xmlHttp.setRequestHeader("Cross-Domain", "true");
+        xmlHttp.send(JSON.stringify(getDataFromUrl()));
+    } else {
+        callback;
     }
-    xmlHttp.open("post", trackingUrl, false);
-    xmlHttp.setRequestHeader("Content-Type", "application/json");
-    xmlHttp.setRequestHeader("Cross-Domain", "true");
-    xmlHttp.send(JSON.stringify(getDataFromUrl()));
-
 }
 
 function trackConversion(type, callBack) {
+    trackUrlParameters();
+
     var conversionData = {
         type: type,
         campaignLandingPageId: campaignLandingPageId
@@ -111,8 +210,50 @@ function getParameterByName(name) {
     return decodeURIComponent(results[2].replace(/\+/g, " "));
 }
 
-//set cookie
-if (getParameterByName('dsp') == "F70624" || getParameterByName('dsp') == "FACD02" || getParameterByName('dsp') == "010101") {
-    trackUrlParameters();
+function clk_sn(convName) {
+    if (getParameterByName('dsp') == "F70624" || getParameterByName('dsp') == "FACD02" || getParameterByName('dsp') == "010101" || getParameterByName('dsp') == "FF69B4") {
+        trackUrlParameters();
+        trackConversion(convName);
+        trackTractConversion();
+    }
+    track_sn(convName)
 }
 
+function append_utms(domainsToDecorate, queryParams) {
+
+    queryParams.push.apply(queryParams, ['fulfillmentCreativeId', 'dspCampaignId', 'dspOrderId', 'fulfillmentOrderId', 'dsp'])
+
+    // do not edit anything below this line
+    var links = document.querySelectorAll('a');
+
+// check if links contain domain from the domainsToDecorate array and then decorates
+    for (var linkIndex = 0; linkIndex < links.length; linkIndex++) {
+        for (var domainIndex = 0; domainIndex < domainsToDecorate.length; domainIndex++) {
+            if (links[linkIndex].href.indexOf(domainsToDecorate[domainIndex]) > -1 && links[linkIndex].href.indexOf("#") === -1) {
+                links[linkIndex].href = decorateUrl(links[linkIndex].href);
+            }
+        }
+    }
+
+// decorates the URL with query params
+    function decorateUrl(urlToDecorate) {
+        urlToDecorate = (urlToDecorate.indexOf('?') === -1) ? urlToDecorate + '?' : urlToDecorate + '&';
+        var collectedQueryParams = [];
+        for (var queryIndex = 0; queryIndex < queryParams.length; queryIndex++) {
+            if (getQueryParam(queryParams[queryIndex])) {
+                collectedQueryParams.push(queryParams[queryIndex] + '=' + getQueryParam(queryParams[queryIndex]))
+            }
+        }
+        return urlToDecorate + collectedQueryParams.join('&');
+    }
+
+    // borrowed from https://stackoverflow.com/questions/831030/
+    // a function that retrieves the value of a query parameter
+    function getQueryParam(name) {
+        if (name = (new RegExp('[?&]' + encodeURIComponent(name) + '=([^&]*)')).exec(window.location.search))
+            return decodeURIComponent(name[1]);
+    }
+
+}
+
+init_sn()
