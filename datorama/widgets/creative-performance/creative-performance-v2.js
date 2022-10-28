@@ -139,6 +139,19 @@ async function onLoad($) {
   console.log(JSON.stringify(result));
   const datoFieldIndex = getFieldsNameToIndex(result);
   const adsLink = await fetchAdLinks(datoFieldIndex, result); //aggregation key to [ads links details]
+  Object.keys(adsLink).forEach((key) => {
+    let lArray = adsLink[key];
+    lArray = lArray.filter(
+      (al) =>
+        al.mimeType.startsWith("image/") || al.mimeType.startsWith("video/")
+    );
+    if (lArray.length > 0) {
+      adsLink[key] = lArray;
+    } else {
+      delete adsLink[key];
+    }
+  });
+
   const aggregatedData = aggregateResults(datoFieldIndex, result, adsLink); //rows, total, rowsByKey
   drawTableForAggregatedData(datoFieldIndex, aggregatedData);
 
