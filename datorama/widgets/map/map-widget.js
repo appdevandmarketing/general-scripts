@@ -188,7 +188,11 @@ async function onLoad($) {
 
     results.rows.forEach((row) => {
       const campaignNumber = row[campaignNumberIndex].value.replace(/\D/g, "");
-      if (campaignHIndex >= 0 && campaignNameIndex >= 0) {
+      if (
+        campaignHIndex >= 0 &&
+        campaignNameIndex >= 0 &&
+        row[campaignNameIndex].value !== "CRA"
+      ) {
         const campaignNameH = row[campaignHIndex].value;
         const campaignName = row[campaignNameIndex].value;
         if (
