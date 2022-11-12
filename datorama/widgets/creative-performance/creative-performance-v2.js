@@ -360,13 +360,19 @@ function findUniqueCampaignNumbers(datoFieldIndex, result) {
   const campaignNumbers = [];
   const cnIndex = datoFieldIndex.dimensions[FIELD_CAMPAIGN_NUMBER_H];
   const campaignNameHIndex = datoFieldIndex.dimensions[FIELD_CAMPAIGN_NAME_H];
+  const impressionIndex = datoFieldIndex.measurements[FIELD_IMPRESSIONS];
 
   result.rows.forEach((row) => {
     const campaignNameH = row[campaignNameHIndex].value;
+    const impressions = parseMeasurement(row[impressionIndex].value);
 
     const campaignNumberH = row[cnIndex].value;
     const campaignNumber = campaignNumberH.replace(/\D/g, "");
-    if (!isNaN(campaignNumber) && !campaignNumbers.includes(campaignNumber)) {
+    if (
+      !isNaN(campaignNumber) &&
+      !campaignNumbers.includes(campaignNumber) &&
+      impressions > 0
+    ) {
       campaignNumbers.push(campaignNumber);
     }
   });
