@@ -308,6 +308,7 @@ async function onLoad($) {
       });
     });
 
+    $(".treeContainer").css({ "max-height": "100%", overflow: "auto" });
     $(".treeContainer").html(html);
     return html;
   }
