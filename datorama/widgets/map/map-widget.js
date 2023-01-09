@@ -445,8 +445,9 @@ async function onLoad($) {
 
   function createErrorTemplate(title, message) {
     return `
-      <h2>${title}&nbsp;<b>:(</b></h2>
-      <h3>${message}</h3>
+      <h2></h2>
+      <br><br>
+      <h3><b>${message}</b></h3>
        <div class="gears">
         <div class="gear one">
           <div class="bar"></div>
@@ -474,7 +475,7 @@ async function onLoad($) {
       $("body").html(
         createErrorTemplate(
           "No Maps",
-          "Targeting map is not available for this campaign."
+          "Campaign targeting maps are not available at the moment. Please try again later!"
         )
       );
     }
