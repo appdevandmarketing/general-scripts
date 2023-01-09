@@ -3,6 +3,7 @@ importScripts([
     "css",
     "https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css",
   ],
+
   [
     "css",
     "https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css",
@@ -28,9 +29,23 @@ async function onLoad($) {
   const CT_ZOOM_LEVEL = 14;
   const API_URL = "https://supernovaapp.rainlocal.com/campaign/targets/";
 
+  const activeMarker = {
+    url: "https://cdn1.rainlocal.com/asset/scripts/datorama/widgets/map/map-marker-selected.svg",
+    anchor: new google.maps.Point(24, 46),
+  };
+
+  const inactiveMarker = {
+    url: "https://cdn1.rainlocal.com/asset/scripts/datorama/widgets/map/map-marker-not-selected.svg",
+    anchor: new google.maps.Point(24, 46),
+  };
+
   const loadedMapData = [];
   const loadedTargetLists = [];
+  const polygonsByCampaignTarget = {};
+  const markersByCampaignTarget = {};
+  const inactiveMarkersByCampaignTarget = {};
 
+  let currentlyActiveCtl = null;
   let googleMapsInstance = null;
 
   function isInitialized() {
@@ -89,6 +104,7 @@ async function onLoad($) {
     const tmp = Object.assign({}, polygonDefaultOptions);
     tmp.fillColor = color;
     tmp.strokeColor = color;
+    tmp.fillOpacity = 0.0;
 
     tmp.paths = path;
     tmp.map = googleMapsInstance;
@@ -118,6 +134,7 @@ async function onLoad($) {
     // Sets the color
     tmp.fillColor = color;
     tmp.strokeColor = color;
+    tmp.fillOpacity = 0.0;
 
     tmp.map = googleMapsInstance;
     tmp.center = new google.maps.LatLng(circle.center.lat, circle.center.lng);
@@ -245,16 +262,25 @@ async function onLoad($) {
             if (!isInitialized()) {
               init(geoData.center.lat, geoData.center.lng, C_ZOOM_LEVEL);
             }
-            createCircle(geoData, chooseRandomColor());
+            const circle = createCircle(geoData, chooseRandomColor());
+            polygonsByCampaignTarget[target.id] = circle;
+
+            const marker = createMarker(geoData);
+            marker.setMap(googleMapsInstance);
+            markersByCampaignTarget[target.id] = marker;
+
+            const inactiveMarker = createInactiveMarker(geoData);
+            inactiveMarkersByCampaignTarget[target.id] = inactiveMarker;
           } else {
             if (!isInitialized()) {
               init(geoData[0].lat, geoData[0].lng, C_ZOOM_LEVEL);
             }
-            createPolygon(
+            const polygon = createPolygon(
               formatPolygonCoordinates(geoData),
               chooseRandomColor(),
               null
             );
+            polygonsByCampaignTarget[target.id] = polygon;
           }
         });
 
@@ -270,29 +296,26 @@ async function onLoad($) {
     }
   }
 
-  function defaultMap() {
-    new google.maps.Map(document.getElementById("map"), {
-      center: { lat: -34.397, lng: 150.644 },
-      zoom: 8,
+  function createMarker(circle) {
+    const center = new google.maps.LatLng(circle.center.lat, circle.center.lng);
+
+    return new google.maps.Marker({
+      position: center,
+      icon: activeMarker,
+    });
+  }
+
+  function createInactiveMarker(circle) {
+    const center = new google.maps.LatLng(circle.center.lat, circle.center.lng);
+
+    return new google.maps.Marker({
+      position: center,
+      icon: inactiveMarker,
     });
   }
 
   function chooseRandomColor() {
-    const colors = [
-      "#ff0000ff",
-      "#00ff00ff",
-      "#0000ffff",
-      "#2E8B57ff",
-      "#DC143CFF",
-      "#4B0082FF",
-      "#A0522DFF",
-      "#006400FF",
-      "#39C0ED",
-      "#262626",
-      "#FFA900",
-      "#B23CFD",
-      "#00B74A",
-    ];
+    const colors = ["#27a4dd"];
     const index = Math.floor(Math.random() * colors.length);
     return colors[index];
   }
@@ -357,7 +380,7 @@ async function onLoad($) {
           geoData.center.lng
         );
         const bearings = [0, 90, 180, 270];
-        const radius = kilometersToMeters(geoData.radius);
+        const radius = kilometersToMeters(geoData.radius + 1);
         bearings.forEach((bearing) => {
           const bound = google.maps.geometry.spherical.computeOffset(
             latLng,
@@ -377,6 +400,22 @@ async function onLoad($) {
   }
 
   function panToCampaignTargetList(firstCtl) {
+    Object.values(polygonsByCampaignTarget).forEach((polygon) => {
+      setDefaultPolygonOptions(polygon, chooseRandomColor());
+    });
+
+    Object.keys(markersByCampaignTarget).forEach((ctId) => {
+      if (ctId in polygonsByCampaignTarget) {
+        polygonsByCampaignTarget[ctId].setVisible(false);
+      }
+
+      markersByCampaignTarget[ctId].setMap(null);
+    });
+
+    Object.values(inactiveMarkersByCampaignTarget).forEach((marker) => {
+      marker.setMap(googleMapsInstance);
+    });
+
     let animTime = 500;
     if (googleMapsInstance.getZoom() < C_ZOOM_LEVEL - 1) {
       animTime = 0;
@@ -392,7 +431,35 @@ async function onLoad($) {
         addBoundsForGeoData(boundsArray, geoData, mapType);
       });
       fitBounds(boundsArray);
+
+      firstCtl.campaignTargets.forEach((target) => {
+        if (target.id in polygonsByCampaignTarget) {
+          const polygon = polygonsByCampaignTarget[target.id];
+          setSelectedPolygonOptions(polygon, chooseRandomColor());
+          polygon.setVisible(true);
+        }
+        if (target.id in markersByCampaignTarget) {
+          markersByCampaignTarget[target.id].setMap(googleMapsInstance);
+          inactiveMarkersByCampaignTarget[target.id].setMap(null);
+        }
+      });
     }, animTime);
+  }
+
+  function setDefaultPolygonOptions(polygon, color) {
+    const tmp = {};
+    tmp.fillColor = color;
+    tmp.strokeColor = color;
+    tmp.fillOpacity = 0.0;
+    polygon.setOptions(tmp);
+  }
+
+  function setSelectedPolygonOptions(polygon, color) {
+    const tmp = {};
+    tmp.fillColor = color;
+    tmp.strokeColor = color;
+    tmp.fillOpacity = 0.3;
+    polygon.setOptions(tmp);
   }
 
   function panToCampaign(campaigns) {
@@ -403,6 +470,18 @@ async function onLoad($) {
           const mapType = target.type;
           const geoData = JSON.parse(target.coordinates);
           addBoundsForGeoData(boundsArray, geoData, mapType);
+
+          if (target.id in polygonsByCampaignTarget) {
+            const polygon = polygonsByCampaignTarget[target.id];
+            setDefaultPolygonOptions(polygon, chooseRandomColor());
+            polygon.setVisible(!(target.id in markersByCampaignTarget));
+          }
+          Object.values(markersByCampaignTarget).forEach((marker) => {
+            marker.setMap(null);
+          });
+          Object.values(inactiveMarkersByCampaignTarget).forEach((marker) => {
+            marker.setMap(googleMapsInstance);
+          });
         });
       });
     });
@@ -419,16 +498,25 @@ async function onLoad($) {
   });
 
   $("body").on("click", "[role=ctl]", function () {
-    console.log("Clicked on ctl");
-    const cId = $(this).data("campaignid");
-    const ctlId = $(this).data("ctlid");
+    if (this == currentlyActiveCtl) {
+      $("[role=ctl]").removeClass("active");
+      const cId = $(this).data("campaignid");
+      const campaign = findCampaignByCampaignId(cId);
+      panToCampaign([campaign]);
+      currentlyActiveCtl = null;
+    } else {
+      currentlyActiveCtl = this;
+      console.log("Clicked on ctl");
+      const cId = $(this).data("campaignid");
+      const ctlId = $(this).data("ctlid");
 
-    const firstCtl = findCampaignTargetList(cId, ctlId);
-    if (firstCtl == null) return;
-    panToCampaignTargetList(firstCtl);
+      const firstCtl = findCampaignTargetList(cId, ctlId);
+      if (firstCtl == null) return;
+      panToCampaignTargetList(firstCtl);
 
-    $("[role=ctl]").removeClass("active");
-    $(this).addClass("active");
+      $("[role=ctl]").removeClass("active");
+      $(this).addClass("active");
+    }
   });
 
   $("body").on("click", "[role=ct]", function () {
@@ -448,7 +536,7 @@ async function onLoad($) {
       <h2></h2>
       <br><br>
       <h3><b>${message}</b></h3>
-       <div class="gears">
+      <div class="gears">
         <div class="gear one">
           <div class="bar"></div>
           <div class="bar"></div>
@@ -465,7 +553,7 @@ async function onLoad($) {
           <div class="bar"></div>
         </div>
       </div>
-      `;
+    `;
   }
 
   try {
@@ -475,7 +563,7 @@ async function onLoad($) {
       $("body").html(
         createErrorTemplate(
           "No Maps",
-          "Campaign targeting maps are not available at the moment. Please try again later!"
+          "Targeting map is not available for this campaign."
         )
       );
     }

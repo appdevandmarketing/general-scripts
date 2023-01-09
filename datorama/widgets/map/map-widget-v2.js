@@ -533,26 +533,27 @@ async function onLoad($) {
 
   function createErrorTemplate(title, message) {
     return `
-        <h2>${title}&nbsp;<b>:(</b></h2>
-        <h3>${message}</h3>
-         <div class="gears">
-          <div class="gear one">
-            <div class="bar"></div>
-            <div class="bar"></div>
-            <div class="bar"></div>
-          </div>
-          <div class="gear two">
-            <div class="bar"></div>
-            <div class="bar"></div>
-            <div class="bar"></div>
-          </div>
-          <div class="gear three">
-            <div class="bar"></div>
-            <div class="bar"></div>
-            <div class="bar"></div>
-          </div>
+      <h2></h2>
+      <br><br>
+      <h3><b>${message}</b></h3>
+      <div class="gears">
+        <div class="gear one">
+          <div class="bar"></div>
+          <div class="bar"></div>
+          <div class="bar"></div>
         </div>
-        `;
+        <div class="gear two">
+          <div class="bar"></div>
+          <div class="bar"></div>
+          <div class="bar"></div>
+        </div>
+        <div class="gear three">
+          <div class="bar"></div>
+          <div class="bar"></div>
+          <div class="bar"></div>
+        </div>
+      </div>
+    `;
   }
 
   try {
