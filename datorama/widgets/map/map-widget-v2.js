@@ -1,27 +1,32 @@
-importScripts([
-  [
-    "css",
-    "https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css",
-  ],
+const urlParams = new URLSearchParams(window.location.search);
+const forScreenshot = urlParams.get("forScreenShot") === "true";
 
-  [
-    "css",
-    "https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css",
-  ],
+if (!forScreenshot) {
+  importScripts([
+    [
+      "css",
+      "https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css",
+    ],
 
-  [
-    "js",
-    "https://maps.googleapis.com/maps/api/js?key=AIzaSyBwA_84CNVQjgvQn2fUvOg9jOz93qMHUdo&libraries=geometry",
-  ],
-  ["js", "https://code.jquery.com/jquery-3.6.0.min.js"],
-  [
-    "js",
-    "https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/js/bootstrap.bundle.min.js",
-  ],
-  ["js", "https://polyfill.io/v3/polyfill.min.js?features=default"],
-]).then(function () {
-  jQuery(onLoad);
-});
+    [
+      "css",
+      "https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css",
+    ],
+
+    [
+      "js",
+      "https://maps.googleapis.com/maps/api/js?key=AIzaSyBwA_84CNVQjgvQn2fUvOg9jOz93qMHUdo&libraries=geometry",
+    ],
+    ["js", "https://code.jquery.com/jquery-3.6.0.min.js"],
+    [
+      "js",
+      "https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/js/bootstrap.bundle.min.js",
+    ],
+    ["js", "https://polyfill.io/v3/polyfill.min.js?features=default"],
+  ]).then(function () {
+    jQuery(onLoad);
+  });
+}
 
 async function onLoad($) {
   const C_ZOOM_LEVEL = 10;
@@ -197,48 +202,56 @@ async function onLoad($) {
     return -1;
   }
 
-  function findValidCampaignNumbers(results) {
-    const campaignNumbers = [];
-    const campaignNumberIndex = findCampaignNumberIndex(results);
-    const campaignHIndex = findCampaignNameHIndex(results);
-    const campaignNameIndex = findCampaignNameIndex(results);
+  function findValidCampaignNumbers() {
+    if (forScreenshot) {
+      const campaignNumber = urlParams.get("campaignId");
+      return campaignNumber.split(",");
+    } else {
+      const results = DA.query.getQueryResult();
+      console.log(JSON.stringify(results));
 
-    results.rows.forEach((row) => {
-      const campaignNumber = row[campaignNumberIndex].value.replace(/\D/g, "");
-      if (
-        campaignHIndex >= 0 &&
-        campaignNameIndex >= 0 &&
-        row[campaignNameIndex].value !== "CRA"
-      ) {
-        const campaignNameH = row[campaignHIndex].value;
-        const campaignName = row[campaignNameIndex].value;
+      const campaignNumbers = [];
+      const campaignNumberIndex = findCampaignNumberIndex(results);
+      const campaignHIndex = findCampaignNameHIndex(results);
+      const campaignNameIndex = findCampaignNameIndex(results);
+
+      results.rows.forEach((row) => {
+        const campaignNumber = row[campaignNumberIndex].value.replace(
+          /\D/g,
+          ""
+        );
         if (
-          campaignName == null ||
-          campaignName == "" ||
-          !campaignName.includes(campaignNameH)
+          campaignHIndex >= 0 &&
+          campaignNameIndex >= 0 &&
+          row[campaignNameIndex].value !== "CRA"
+        ) {
+          const campaignNameH = row[campaignHIndex].value;
+          const campaignName = row[campaignNameIndex].value;
+          if (
+            campaignName == null ||
+            campaignName == "" ||
+            !campaignName.includes(campaignNameH)
+          ) {
+            return;
+          }
+        }
+        if (
+          campaignNumber == null ||
+          campaignNumber == "" ||
+          isNaN(campaignNumber) ||
+          campaignNumbers.includes(campaignNumber)
         ) {
           return;
         }
-      }
-      if (
-        campaignNumber == null ||
-        campaignNumber == "" ||
-        isNaN(campaignNumber) ||
-        campaignNumbers.includes(campaignNumber)
-      ) {
-        return;
-      }
-      campaignNumbers.push(campaignNumber);
-    });
-    return campaignNumbers;
+        campaignNumbers.push(campaignNumber);
+      });
+      return campaignNumbers;
+    }
   }
 
   async function loadMapDataFromAPI() {
-    const results = DA.query.getQueryResult();
-    console.log(JSON.stringify(results));
-
+    const campaignNumbers = findValidCampaignNumbers();
     const loadedCoordinates = [];
-    const campaignNumbers = findValidCampaignNumbers(results);
 
     for (let index = 0; index < campaignNumbers.length; index++) {
       if (index > 10) break;
@@ -293,6 +306,11 @@ async function onLoad($) {
 
     if (isInitialized()) {
       panToCampaign(loadedMapData);
+      window.mapInitialized = true;
+      window.errorLoadingMap = false;
+    } else {
+      window.errorLoadingMap = true;
+      window.mapInitialized = false;
     }
   }
 
@@ -558,14 +576,17 @@ async function onLoad($) {
 
   try {
     await loadMapDataFromAPI();
-    createTreeListing();
-    if (!isInitialized()) {
-      $("body").html(
-        createErrorTemplate(
-          "No Maps",
-          "Targeting map is not available for this campaign."
-        )
-      );
+
+    if (!forScreenshot) {
+      createTreeListing();
+      if (!isInitialized()) {
+        $("body").html(
+          createErrorTemplate(
+            "No Maps",
+            "Targeting map is not available for this campaign."
+          )
+        );
+      }
     }
   } catch (err) {
     console.log(err);
@@ -575,7 +596,7 @@ async function onLoad($) {
         "There was an error loading campaign target maps!"
       )
     );
+  } finally {
+    $(".loading").hide();
   }
-
-  $(".loading").hide();
 }
