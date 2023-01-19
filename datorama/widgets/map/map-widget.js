@@ -69,6 +69,7 @@ async function onLoad($) {
       zoom: zoomLevel,
       center: latLng,
       mapTypeId: google.maps.MapTypeId.ROADMAP,
+      disableDefaultUI: forScreenshot,
     };
 
     googleMapsInstance = new google.maps.Map(
