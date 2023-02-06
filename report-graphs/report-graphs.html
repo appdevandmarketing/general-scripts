@@ -1,0 +1,260 @@
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chart Plotter</title>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.3/jquery.min.js"
+      integrity="sha512-STof4xm1wgkfm7heWqFJVn58Hm3EtS31XFaagaa8VMReCXAkQnJZ+jEy8PCC/iT18dFy95WcExNHFTqLyp72eQ=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.2.2/Chart.bundle.js"
+      integrity="sha512-KMChadIe/ljCkSE/vbyMO7rcrdLGT+jYy3Vdo/EGPYUlSxn+wd9mAYrHDUgi1q0oA+GwC7dLC5vxmu/vHQ2QDQ=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+
+    <script>
+      jQuery(async function ($) {
+        const TOTAL_STEPS = 16;
+
+        function percentOf(percent, number) {
+          return (number * percent) / 100;
+        }
+
+        function buildChartJsConfig(rawData) {
+          if (rawData.type === "LINE_GRAPH") {
+            return {
+              type: "line",
+              data: {
+                labels: rawData.labels,
+                datasets: rawData.data.map((obj, index) => {
+                  return {
+                    label: obj.dataType,
+                    yAxisID: obj.dataType,
+                    data: obj.values,
+                    fill: false,
+                    borderColor: rawData.colors.find(
+                      (it) => it.dataType === obj.dataType
+                    ).colorValue,
+                  };
+                }),
+              },
+              options: {
+                responsive: false,
+
+                elements: {
+                  line: {
+                    tension: 0.1,
+                  },
+                },
+
+                scales: {
+                  yAxes: rawData.data.map((obj, index) => {
+                    return {
+                      id: obj.dataType,
+                      type: "linear",
+                      position: index % 2 === 0 ? "left" : "right",
+
+                      ticks: {
+                        fontColor: rawData.colors.find(
+                          (it) => it.dataType === obj.dataType
+                        ).colorValue,
+
+                        fontSize: 14,
+
+                        beginAtZero: true,
+                        steps: 10,
+                      },
+
+                      gridLines: {
+                        display: index === 0,
+                      },
+                    };
+                  }),
+                  xAxes: [
+                    {
+                      maxBarThickness: 10,
+                      ticks: {
+                        fontSize: 14,
+                        maxRotation: 45,
+                        minRotation: 45,
+                      },
+                    },
+                  ],
+                },
+              },
+            };
+          } else if (
+            rawData.type === "STACKED_BAR_GRAPH" ||
+            rawData.type === "BAR_GRAPH"
+          ) {
+            rawData.data = rawData.data.reverse();
+            rawData.colors = rawData.colors.reverse();
+            return {
+              type: "bar",
+              data: {
+                labels: rawData.labels,
+                datasets: rawData.data.map((obj, index) => {
+                  return {
+                    label: obj.dataType,
+                    backgroundColor: rawData.colors.find(
+                      (it) => it.dataType === obj.dataType
+                    ).colorValue,
+                    data: obj.values,
+                  };
+                }),
+              },
+              options: {
+                responsive: false,
+                scales: {
+                  xAxes: [
+                    {
+                      maxBarThickness: 20,
+                      ticks: {
+                        fontSize: 14,
+                        maxRotation: 45,
+                        minRotation: 45,
+                      },
+                      stacked: rawData.type === "STACKED_BAR_GRAPH",
+                    },
+                  ],
+                  yAxes: [
+                    {
+                      ticks: {
+                        fontSize: 14,
+                        fontColor: "#00000000",
+                      },
+                      stacked: rawData.type === "STACKED_BAR_GRAPH",
+                    },
+                  ],
+                },
+              },
+            };
+          }
+          return null;
+        }
+
+        async function drawGraph() {
+          const urlParams = new URLSearchParams(window.location.search);
+          const dataUrl = urlParams.get("dataUrl");
+          let data = await $.get(dataUrl);
+          if (typeof data === "string") {
+            data = JSON.parse(data);
+          }
+          const chartJsConfig = buildChartJsConfig(data);
+          console.log(JSON.stringify(chartJsConfig));
+          const canvasHeight = percentOf(95, window.innerHeight);
+          const canvasWidth = percentOf(95, window.innerWidth);
+          console.log(canvasHeight, canvasWidth);
+          const canvas = document.getElementById("chart");
+          canvas.width = canvasWidth;
+          canvas.height = canvasHeight;
+          new Chart(canvas, chartJsConfig);
+          setTimeout(() => {
+            window.pageInitialized = true;
+          }, 300);
+        }
+
+        function floor(number, multiplier) {
+          const q = number / multiplier;
+          const fq = Math.floor(q);
+          return multiplier * fq;
+        }
+
+        function ceil(number, multiplier) {
+          const q = number / multiplier;
+          const fq = Math.ceil(q);
+          return multiplier * fq;
+        }
+
+        function getMinMaxRangeForData(rawData) {
+          const data = rawData.data;
+          const keys = Object.keys(data);
+        }
+
+        function padEndN(str, char, n) {
+          for (let i = 0; i < n; i++) {
+            str += char;
+          }
+          return str;
+        }
+
+        drawGraph();
+      });
+    </script>
+  </head>
+  <body>
+    <canvas id="chart"></canvas>
+
+    <!-- <script type="application/json" id="rawData">
+{
+  "type": "LINE_GRAPH",
+  "labels": [
+    "Jan-01",
+    "Jan-02",
+    "Jan-03",
+    "Jan-04",
+    "Jan-05",
+    "Jan-06",
+    "Jan-07",
+    "Jan-01",
+    "Jan-02",
+    "Jan-03",
+    "Jan-04",
+    "Jan-05",
+    "Jan-06",
+    "Jan-07",
+    "Jan-01",
+    "Jan-02",
+    "Jan-03",
+    "Jan-04",
+    "Jan-05",
+    "Jan-06",
+    "Jan-07"
+  ],
+  "data": [
+    {
+      "dataType": "Impressions",
+      "values": [
+        1000, 1050, 1060, 1110, 1000, 1033, 980, 960, 950, 975, 1000, 1100,
+        1101, 1009, 1050, 1050, 1111, 1100, 990, 1040, 1060
+      ]
+    },
+    {
+      "dataType": "Clicks",
+      "values": [
+        50, 51, 60, 62, 58, 56, 55, 50, 52, 51, 54, 49, 47, 50, 53, 50, 49, 45,
+        42, 41, 40
+      ]
+    },
+
+    {
+      "dataType": "CTR",
+      "values": [
+        0.5, 0.9, 1.5, 2.5, 1.01, 1.02, 0.25, 0.5, 0.9, 1.5, 2.5, 1.01, 1.02,
+        0.25, 0.5, 0.9, 1.5, 2.5, 1.01, 1.02, 0.25
+      ]
+    }
+  ],
+  "colors": [
+    {
+      "dataType": "Impressions",
+      "colorValue": "#36a2eb"
+    },
+    {
+      "dataType": "Clicks",
+      "colorValue": "#ff6384"
+    },
+    {
+      "dataType": "CTR",
+      "colorValue": "#9966ff"
+    }
+  ]
+}
+    </script> -->
+  </body>
+</html>
