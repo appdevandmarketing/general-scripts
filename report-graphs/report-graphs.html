@@ -10,12 +10,7 @@
       crossorigin="anonymous"
       referrerpolicy="no-referrer"
     ></script>
-    <script
-      src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.2.2/Chart.bundle.js"
-      integrity="sha512-KMChadIe/ljCkSE/vbyMO7rcrdLGT+jYy3Vdo/EGPYUlSxn+wd9mAYrHDUgi1q0oA+GwC7dLC5vxmu/vHQ2QDQ=="
-      crossorigin="anonymous"
-      referrerpolicy="no-referrer"
-    ></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.4.0/Chart.bundle.js"></script>
 
     <script>
       jQuery(async function ($) {
@@ -57,7 +52,8 @@
                     return {
                       id: obj.dataType,
                       type: "linear",
-                      position: index % 2 === 0 ? "left" : "right",
+                      position:
+                        obj.dataType === "Impressions" ? "left" : "right",
 
                       ticks: {
                         fontColor: rawData.colors.find(
@@ -71,7 +67,7 @@
                       },
 
                       gridLines: {
-                        display: index === 0,
+                        display: obj.dataType === "Impressions",
                       },
                     };
                   }),
