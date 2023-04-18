@@ -57,11 +57,11 @@ const AGGREGATION_SKIP_DIMENSIONS = [
 ];
 
 const CALCULATED_VALUES = {
-  [FIELD_CTR]: (row, datoFieldIndex, adLinks, istotalField) => {
+  [FIELD_CTR]: (row, datoFieldIndex, adLinks, istotalField, datoRows) => {
     if (row[FIELD_IMPRESSIONS] == 0) return 0;
     return (row[FIELD_CLICKS] / row[FIELD_IMPRESSIONS]) * 100;
   },
-  [FIELD_CONV_RATE]: (row, datoFieldIndex, adLinks, istotalField) => {
+  [FIELD_CONV_RATE]: (row, datoFieldIndex, adLinks, istotalField, datoRows) => {
     if (row[FIELD_CLICKS] == 0) return 0;
     let clicks = row[FIELD_CLICKS];
     if (FIELD_CLICKS_RI in row) {
@@ -69,11 +69,32 @@ const CALCULATED_VALUES = {
     }
     return (row[FIELD_GA_RAIN_EVENTS] / clicks) * 100;
   },
-  [FIELD_AD_THUMBNAIL]: (row, datoFieldIndex, adLinks, istotalField) => {
-    const adKey = getAggregationKey(datoFieldIndex, row);
+  [FIELD_AD_THUMBNAIL]: (
+    row,
+    datoFieldIndex,
+    adLinks,
+    istotalField,
+    datoRows
+  ) => {
     const thumbHeight = 60;
     const thumbWidth = 60;
+
+    const adKey = getAggregationKey(datoFieldIndex, row);
+
     if (istotalField) return "Total";
+
+    if (row[FIELD_AD_NUMBER] === "Unattributed") {
+      return `<img src="https://cdn1.rainlocal.com/asset/scripts/datorama/widgets/creative-performance/alert-icon.svg" alt="Error" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
+    }
+
+    if (
+      datoRows != null &&
+      datoRows.length > 0 &&
+      datoRows[0][FIELD_BID_STRATEGY_H] === "Paid Search"
+    ) {
+      return `<img src="https://cdn1.rainlocal.com/asset/scripts/datorama/widgets/creative-performance/search_ad_icon.png" alt="Error" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
+    }
+
     if (adKey in adLinks) {
       const ads = filterBestFitAds(adLinks[adKey]);
       if (ads.length > 0) {
@@ -531,16 +552,21 @@ function aggregateResults(datoFieldIndex, result, adsLink) {
 
 function aggregateRows(datoFieldIndex, rows, adsLink) {
   const aggregationByKey = {};
+  const aggregatedRowObjects = {};
+
   rows.forEach((row) => {
     let key = getAggregationKey(datoFieldIndex, row);
     applyUnattributedLogic(key, datoFieldIndex, row, adsLink);
     key = getAggregationKey(datoFieldIndex, row);
     if (!(key in aggregationByKey)) {
       aggregationByKey[key] = row;
+      aggregatedRowObjects[key] = [];
+      aggregatedRowObjects[key].push({ ...row });
     } else {
       Object.keys(datoFieldIndex.measurements).forEach((measurement) => {
         aggregationByKey[key][measurement] += row[measurement];
       });
+      aggregatedRowObjects[key].push({ ...row });
     }
   });
   const total = {};
@@ -554,17 +580,24 @@ function aggregateRows(datoFieldIndex, rows, adsLink) {
     }
   });
 
-  const aggregatedRows = Object.values(aggregationByKey).map((row) => {
+  const aggregatedRows = Object.entries(aggregationByKey).map(([key, row]) => {
+    const newRow = row;
     AGGREGATION_SKIP_DIMENSIONS.forEach((dim, index) => {
-      delete row[dim];
+      delete newRow[dim];
     });
     Object.keys(datoFieldIndex.measurements).forEach((measurement) => {
-      total[measurement] += row[measurement];
+      total[measurement] += newRow[measurement];
     });
     Object.entries(CALCULATED_VALUES).forEach(([field, calculator]) => {
-      row[field] = calculator(row, datoFieldIndex, adsLink, false);
+      newRow[field] = calculator(
+        newRow,
+        datoFieldIndex,
+        adsLink,
+        false,
+        aggregatedRowObjects[key]
+      );
     });
-    return row;
+    return newRow;
   });
 
   Object.entries(CALCULATED_VALUES).forEach(([field, calculator]) => {
