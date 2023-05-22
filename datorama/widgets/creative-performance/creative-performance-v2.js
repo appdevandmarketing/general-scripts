@@ -30,6 +30,13 @@ importScripts([
   jQuery(onLoad);
 });
 
+const SEARCH_AD_ICON_URL =
+  "https://cdn1.rainlocal.com/asset/scripts/datorama/widgets/creative-performance/search_ad_icon.png";
+const ALERT_ICON_URL =
+  "https://cdn1.rainlocal.com/asset/scripts/datorama/widgets/creative-performance/alert-icon.svg";
+const VIDEO_PLAYER_ICON_URL =
+  "https://cdn1.rainlocal.com/asset/scripts/datorama/widgets/creative-performance/video-player-icon.svg";
+
 const API_ENDPOINT =
   "https://supernovaapp.rainlocal.com/public/creative/adsLink/";
 
@@ -84,7 +91,11 @@ const CALCULATED_VALUES = {
     if (istotalField) return "Total";
 
     if (row[FIELD_AD_NUMBER] === "Unattributed") {
-      return `<img src="https://cdn1.rainlocal.com/asset/scripts/datorama/widgets/creative-performance/alert-icon.svg" alt="Error" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
+      return `<img src="${ALERT_ICON_URL}" alt="Error" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
+    }
+
+    if (row[FIELD_AD_NUMBER].endsWith("A")) {
+      return `<img src="${VIDEO_PLAYER_ICON_URL}" alt="Video" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
     }
 
     if (
@@ -92,21 +103,28 @@ const CALCULATED_VALUES = {
       datoRows.length > 0 &&
       datoRows[0][FIELD_BID_STRATEGY_H] === "Paid Search"
     ) {
-      return `<img src="https://cdn1.rainlocal.com/asset/scripts/datorama/widgets/creative-performance/search_ad_icon.png" alt="Error" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
+      return `<img src="${SEARCH_AD_ICON_URL}" alt="Error" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
     }
 
     if (adKey in adLinks) {
       const ads = filterBestFitAds(adLinks[adKey]);
       if (ads.length > 0) {
         const imageAds = ads.filter((a) => a.mimeType.startsWith("image/", 0));
+        const videoAds = ads.filter((a) => a.mimeType.startsWith("video/", 0));
+        const animatedAds = ads.filter((a) =>
+          a.mimeType.startsWith("text/html", 0)
+        );
+
         if (imageAds.length > 0) {
           return `<img src="${imageAds[0].url}" alt="${imageAds[0].adFileName}" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: cover;"></img>`;
-        } else {
-          return `<img src="https://cdn1.rainlocal.com/asset/scripts/datorama/widgets/creative-performance/video-player-icon.svg" alt="Video" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
+        } else if (videoAds.length > 0) {
+          return `<img src="${VIDEO_PLAYER_ICON_URL}" alt="Video" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
+        } else if (animatedAds.length > 0) {
+          return `<img src="${VIDEO_PLAYER_ICON_URL}" alt="Video" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
         }
       }
     }
-    return `<img src="https://cdn1.rainlocal.com/asset/scripts/datorama/widgets/creative-performance/alert-icon.svg" alt="Error" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
+    return `<img src="${ALERT_ICON_URL}" alt="Error" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
   },
 };
 
@@ -166,7 +184,9 @@ async function onLoad($) {
     let lArray = adsLink[key];
     lArray = lArray.filter(
       (al) =>
-        al.mimeType.startsWith("image/") || al.mimeType.startsWith("video/")
+        al.mimeType.startsWith("image/") ||
+        al.mimeType.startsWith("video/") ||
+        al.mimeType.startsWith("text/html")
     );
     if (lArray.length > 0) {
       adsLink[key] = lArray;
@@ -316,6 +336,12 @@ function onAdNumberClicked(key, adsLink) {
         html += `<source src="${ad.url}" type="${ad.mimeType}"/>`;
         html += `</video>`;
         html += `</div>`;
+      } else if (ad.mimeType.startsWith("text/html")) {
+        const baseUrl = ad.url;
+        html += `<iframe src="${baseUrl}" width="${
+          $("#creativeImageGallery").width() - 30
+        }" height="${$("#creativeImageGallery").height() - 30}">`;
+        html += `</iframe>`;
       }
     });
     html += "</div>";
