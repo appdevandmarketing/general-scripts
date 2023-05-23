@@ -36,6 +36,8 @@ const ALERT_ICON_URL =
   "https://cdn1.rainlocal.com/asset/scripts/datorama/widgets/creative-performance/alert-icon.svg";
 const VIDEO_PLAYER_ICON_URL =
   "https://cdn1.rainlocal.com/asset/scripts/datorama/widgets/creative-performance/video-player-icon.svg";
+const ICON_URL_CODE_OUTLINE =
+  "https://cdn1.rainlocal.com/asset/icon/generic/code-outline.png";
 
 const API_ENDPOINT =
   "https://supernovaapp.rainlocal.com/public/creative/adsLink/";
@@ -95,7 +97,7 @@ const CALCULATED_VALUES = {
     }
 
     if (row[FIELD_AD_NUMBER].endsWith("A")) {
-      return `<img src="${VIDEO_PLAYER_ICON_URL}" alt="Video" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
+      return `<img src="${ICON_URL_CODE_OUTLINE}" alt="Video" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
     }
 
     if (
@@ -120,7 +122,7 @@ const CALCULATED_VALUES = {
         } else if (videoAds.length > 0) {
           return `<img src="${VIDEO_PLAYER_ICON_URL}" alt="Video" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
         } else if (animatedAds.length > 0) {
-          return `<img src="${VIDEO_PLAYER_ICON_URL}" alt="Video" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
+          return `<img src="${ICON_URL_CODE_OUTLINE}" alt="Video" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
         }
       }
     }
