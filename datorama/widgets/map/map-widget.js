@@ -144,9 +144,13 @@ async function onLoad($) {
 
     tmp.map = googleMapsInstance;
     tmp.center = new google.maps.LatLng(circle.center.lat, circle.center.lng);
-    tmp.radius = kilometersToMeters(circle.radius);
+    tmp.radius = milesToMeter(circle.radius);
 
     return new google.maps.Circle(tmp);
+  }
+
+  function milesToMeter(miles) {
+    return miles * 1609.34;
   }
 
   function kilometersToMeters(km) {
@@ -399,7 +403,7 @@ async function onLoad($) {
           geoData.center.lng
         );
         const bearings = [0, 90, 180, 270];
-        const radius = kilometersToMeters(geoData.radius + 1);
+        const radius = milesToMeter(geoData.radius + 1);
         bearings.forEach((bearing) => {
           const bound = google.maps.geometry.spherical.computeOffset(
             latLng,
