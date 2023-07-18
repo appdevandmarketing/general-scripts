@@ -160,16 +160,21 @@ const DATO_TO_API_DATA_FUSION = {
   [FIELD_AD_CONTENT]: "adContent",
 };
 
-const LOADER_HTML = `
-<div class='loader'>
-  <div class='loader--dot'></div>
-  <div class='loader--dot'></div>
-  <div class='loader--dot'></div>
-  <div class='loader--dot'></div>
-  <div class='loader--dot'></div>
-  <div class='loader--dot'></div>
-</div>
-`;
+const LOADER_HTML_WITH_CLASS = (klass) => {
+  return `
+  <div class='loader ${klass}'>
+    <div class='loader--dot'></div>
+    <div class='loader--dot'></div>
+    <div class='loader--dot'></div>
+    <div class='loader--dot'></div>
+    <div class='loader--dot'></div>
+    <div class='loader--dot'></div>
+  </div>
+  `;
+};
+
+const LOADER_HTML = LOADER_HTML_WITH_CLASS("loading");
+
 let activeSwiper = null;
 let activeVideoPlayer = null;
 
@@ -177,6 +182,12 @@ async function onLoad($) {
   $("#creativeImageGallery").css("height", `${getHtmlHeight() - 50}px`);
   $("#creativeTableContainer").html(LOADER_HTML);
   $("#creativeImageGallery").html(LOADER_HTML);
+
+  $("body").on("load", "[role=animatedAdsPlayer]", function () {
+    console.log("Animated ads is loaded completely!");
+    $("[role=animatedAdsPlayer]").show();
+    $(".animatedAdsLoader").hide();
+  });
 
   const result = DA.query.getQueryResult();
   console.log(JSON.stringify(result));
@@ -340,9 +351,31 @@ function onAdNumberClicked(key, adsLink) {
         html += `</div>`;
       } else if (ad.mimeType.startsWith("text/html")) {
         const baseUrl = ad.url;
-        html += `<iframe src="${baseUrl}" width="${
-          $("#creativeImageGallery").width() - 30
-        }" height="${$("#creativeImageGallery").height() - 30}">`;
+        const frameWidth = $("#creativeImageGallery").width();
+        const frameHeight = $("#creativeImageGallery").height();
+        let adWidth = getWidth(ad.adSize);
+        if (adWidth < 10) {
+          adWidth = frameHeight;
+        }
+        adWidth += 10;
+
+        let adHeight = getHeight(ad.adSize);
+        if (adHeight < 10) {
+          adHeight = frameHeight;
+        }
+        adHeight += 10;
+
+        const wScale = frameWidth / adWidth;
+        const hScale = frameHeight / adHeight;
+
+        let rScale = wScale;
+        if (hScale < wScale) {
+          rScale = hScale;
+        }
+        rScale *= 0.95;
+
+        html += LOADER_HTML_WITH_CLASS("animatedAdsLoader");
+        html += `<iframe role="animatedAdsPlayer" src="${baseUrl}" width="${adWidth}" height="${adHeight}" style="border: 0; transform: scale(${rScale});">`;
         html += `</iframe>`;
       }
     });
@@ -351,6 +384,13 @@ function onAdNumberClicked(key, adsLink) {
     html += `</div>`;
 
     $("#creativeImageGallery").html(html);
+    $("[role=animatedAdsPlayer]").hide();
+
+    setTimeout(() => {
+      $("[role=animatedAdsPlayer]").show();
+      $(".animatedAdsLoader").hide();
+      document.querySelector("[role=animatedAdsPlayer]");
+    }, 2000);
 
     activeSwiper = new Swiper(".mySwiper", {
       effect: "coverflow",
@@ -379,6 +419,22 @@ function onAdNumberClicked(key, adsLink) {
     }
   });
   $("#creativeImageGallery").show();
+}
+
+function getHeight(size) {
+  try {
+    return parseFloat(size.split("x")[1].replace(/\D/g, ""));
+  } catch (err) {
+    return 0;
+  }
+}
+
+function getWidth(size) {
+  try {
+    return parseFloat(size.split("x")[0].replace(/\D/g, ""));
+  } catch (err) {
+    return 0;
+  }
 }
 
 function getHtmlHeight() {

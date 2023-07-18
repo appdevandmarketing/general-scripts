@@ -30,6 +30,15 @@ importScripts([
   jQuery(onLoad);
 });
 
+const SEARCH_AD_ICON_URL =
+  "https://cdn1.rainlocal.com/asset/scripts/datorama/widgets/creative-performance/search_ad_icon.png";
+const ALERT_ICON_URL =
+  "https://cdn1.rainlocal.com/asset/scripts/datorama/widgets/creative-performance/alert-icon.svg";
+const VIDEO_PLAYER_ICON_URL =
+  "https://cdn1.rainlocal.com/asset/scripts/datorama/widgets/creative-performance/video-player-icon.svg";
+const ICON_URL_CODE_OUTLINE =
+  "https://cdn1.rainlocal.com/asset/icon/generic/code-outline.png";
+
 const API_ENDPOINT =
   "https://supernovaapp.rainlocal.com/public/creative/adsLink/";
 
@@ -38,7 +47,7 @@ const FIELD_AD_NUMBER = "Ad Number";
 const FIELD_IMPRESSIONS = "Impressions";
 const FIELD_CLICKS = "Clicks";
 const FIELD_CTR = "CTR";
-const FIELD_GA_RAIN_EVENTS = "GA RAIN Events";
+const FIELD_GA_RAIN_EVENTS = "GA4 RAIN Conversions";
 const FIELD_CONV_RATE = "Conv Rate";
 const FIELD_CAMPAIGN_NAME = "Campaign Name";
 const FIELD_CAMPAIGN_NAME_H = "Campaign Name (h)";
@@ -84,7 +93,11 @@ const CALCULATED_VALUES = {
     if (istotalField) return "Total";
 
     if (row[FIELD_AD_NUMBER] === "Unattributed") {
-      return `<img src="https://cdn1.rainlocal.com/asset/scripts/datorama/widgets/creative-performance/alert-icon.svg" alt="Error" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
+      return `<img src="${ALERT_ICON_URL}" alt="Error" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
+    }
+
+    if (row[FIELD_AD_NUMBER].endsWith("A")) {
+      return `<img src="${ICON_URL_CODE_OUTLINE}" alt="Video" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
     }
 
     if (
@@ -92,30 +105,37 @@ const CALCULATED_VALUES = {
       datoRows.length > 0 &&
       datoRows[0][FIELD_BID_STRATEGY_H] === "Paid Search"
     ) {
-      return `<img src="https://cdn1.rainlocal.com/asset/scripts/datorama/widgets/creative-performance/search_ad_icon.png" alt="Error" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
+      return `<img src="${SEARCH_AD_ICON_URL}" alt="Error" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
     }
 
     if (adKey in adLinks) {
       const ads = filterBestFitAds(adLinks[adKey]);
       if (ads.length > 0) {
         const imageAds = ads.filter((a) => a.mimeType.startsWith("image/", 0));
+        const videoAds = ads.filter((a) => a.mimeType.startsWith("video/", 0));
+        const animatedAds = ads.filter((a) =>
+          a.mimeType.startsWith("text/html", 0)
+        );
+
         if (imageAds.length > 0) {
           return `<img src="${imageAds[0].url}" alt="${imageAds[0].adFileName}" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: cover;"></img>`;
-        } else {
-          return `<img src="https://cdn1.rainlocal.com/asset/scripts/datorama/widgets/creative-performance/video-player-icon.svg" alt="Video" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
+        } else if (videoAds.length > 0) {
+          return `<img src="${VIDEO_PLAYER_ICON_URL}" alt="Video" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
+        } else if (animatedAds.length > 0) {
+          return `<img src="${ICON_URL_CODE_OUTLINE}" alt="Video" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
         }
       }
     }
-    return `<img src="https://cdn1.rainlocal.com/asset/scripts/datorama/widgets/creative-performance/alert-icon.svg" alt="Error" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
+    return `<img src="${ALERT_ICON_URL}" alt="Error" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
   },
 };
 
 const FIELD_DATA_FORMATTER = {
   [FIELD_IMPRESSIONS]: numberWithCommas,
   [FIELD_CLICKS]: numberWithCommas,
-  [FIELD_CTR]: percentageFormatter,
+  [FIELD_CTR]: (val) => percentageFormatter(val, 2),
   [FIELD_GA_RAIN_EVENTS]: numberWithCommas,
-  [FIELD_CONV_RATE]: percentageFormatter,
+  [FIELD_CONV_RATE]: (val) => percentageFormatter(val, 1),
 };
 
 const DIMENSIONS_TO_DISPLAY = [
@@ -140,16 +160,21 @@ const DATO_TO_API_DATA_FUSION = {
   [FIELD_AD_CONTENT]: "adContent",
 };
 
-const LOADER_HTML = `
-<div class='loader'>
-  <div class='loader--dot'></div>
-  <div class='loader--dot'></div>
-  <div class='loader--dot'></div>
-  <div class='loader--dot'></div>
-  <div class='loader--dot'></div>
-  <div class='loader--dot'></div>
-</div>
-`;
+const LOADER_HTML_WITH_CLASS = (klass) => {
+  return `
+  <div class='loader ${klass}'>
+    <div class='loader--dot'></div>
+    <div class='loader--dot'></div>
+    <div class='loader--dot'></div>
+    <div class='loader--dot'></div>
+    <div class='loader--dot'></div>
+    <div class='loader--dot'></div>
+  </div>
+  `;
+};
+
+const LOADER_HTML = LOADER_HTML_WITH_CLASS("loading");
+
 let activeSwiper = null;
 let activeVideoPlayer = null;
 
@@ -157,6 +182,12 @@ async function onLoad($) {
   $("#creativeImageGallery").css("height", `${getHtmlHeight() - 50}px`);
   $("#creativeTableContainer").html(LOADER_HTML);
   $("#creativeImageGallery").html(LOADER_HTML);
+
+  $("body").on("load", "[role=animatedAdsPlayer]", function () {
+    console.log("Animated ads is loaded completely!");
+    $("[role=animatedAdsPlayer]").show();
+    $(".animatedAdsLoader").hide();
+  });
 
   const result = DA.query.getQueryResult();
   console.log(JSON.stringify(result));
@@ -166,7 +197,9 @@ async function onLoad($) {
     let lArray = adsLink[key];
     lArray = lArray.filter(
       (al) =>
-        al.mimeType.startsWith("image/") || al.mimeType.startsWith("video/")
+        al.mimeType.startsWith("image/") ||
+        al.mimeType.startsWith("video/") ||
+        al.mimeType.startsWith("text/html")
     );
     if (lArray.length > 0) {
       adsLink[key] = lArray;
@@ -316,6 +349,34 @@ function onAdNumberClicked(key, adsLink) {
         html += `<source src="${ad.url}" type="${ad.mimeType}"/>`;
         html += `</video>`;
         html += `</div>`;
+      } else if (ad.mimeType.startsWith("text/html")) {
+        const baseUrl = ad.url;
+        const frameWidth = $("#creativeImageGallery").width();
+        const frameHeight = $("#creativeImageGallery").height();
+        let adWidth = getWidth(ad.adSize);
+        if (adWidth < 10) {
+          adWidth = frameHeight;
+        }
+        adWidth += 10;
+
+        let adHeight = getHeight(ad.adSize);
+        if (adHeight < 10) {
+          adHeight = frameHeight;
+        }
+        adHeight += 10;
+
+        const wScale = frameWidth / adWidth;
+        const hScale = frameHeight / adHeight;
+
+        let rScale = wScale;
+        if (hScale < wScale) {
+          rScale = hScale;
+        }
+        rScale *= 0.95;
+
+        html += LOADER_HTML_WITH_CLASS("animatedAdsLoader");
+        html += `<iframe role="animatedAdsPlayer" src="${baseUrl}" width="${adWidth}" height="${adHeight}" style="border: 0; transform: scale(${rScale});">`;
+        html += `</iframe>`;
       }
     });
     html += "</div>";
@@ -323,6 +384,13 @@ function onAdNumberClicked(key, adsLink) {
     html += `</div>`;
 
     $("#creativeImageGallery").html(html);
+    $("[role=animatedAdsPlayer]").hide();
+
+    setTimeout(() => {
+      $("[role=animatedAdsPlayer]").show();
+      $(".animatedAdsLoader").hide();
+      document.querySelector("[role=animatedAdsPlayer]");
+    }, 2000);
 
     activeSwiper = new Swiper(".mySwiper", {
       effect: "coverflow",
@@ -351,6 +419,22 @@ function onAdNumberClicked(key, adsLink) {
     }
   });
   $("#creativeImageGallery").show();
+}
+
+function getHeight(size) {
+  try {
+    return parseFloat(size.split("x")[1].replace(/\D/g, ""));
+  } catch (err) {
+    return 0;
+  }
+}
+
+function getWidth(size) {
+  try {
+    return parseFloat(size.split("x")[0].replace(/\D/g, ""));
+  } catch (err) {
+    return 0;
+  }
 }
 
 function getHtmlHeight() {
@@ -406,10 +490,10 @@ function defaultFormatter(value) {
   return value;
 }
 
-function percentageFormatter(value) {
+function percentageFormatter(value, decplac) {
   if (value == null || value == "" || isNaN(value) || !isFinite(value))
-    return "0.00%";
-  else return parseFloat(value).toFixed(2) + "%";
+    return parseFloat(0).toFixed(decplac) + "%";
+  else return parseFloat(value).toFixed(decplac) + "%";
 }
 
 function numberWithCommas(x) {
