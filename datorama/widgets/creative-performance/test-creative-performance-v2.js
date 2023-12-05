@@ -1,4 +1,13 @@
 importScripts([
+  ["js", "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"],
+  [
+    "css",
+    "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css",
+  ],
+  [
+    "css",
+    "https://cdn1.rainlocal.com/asset/scripts/datorama/widgets/creative-performance/creative-performance.css",
+  ],
   ["css", "https://cdn.datatables.net/1.12.1/css/jquery.dataTables.min.css"],
   [
     "css",
@@ -39,15 +48,14 @@ const VIDEO_PLAYER_ICON_URL =
 const ICON_URL_CODE_OUTLINE =
   "https://cdn1.rainlocal.com/asset/icon/generic/code-outline.png";
 
-const API_ENDPOINT =
-  "https://supernovaapp.rainlocal.com/public/creative/adsLink/";
+const API_ENDPOINT = "https://xconnect.rainlocal.com/open/v1/creative/adsLink2";
 
 const FIELD_CAMPAIGN_NUMBER_H = "Campaign Number (h)";
 const FIELD_AD_NUMBER = "Ad Number";
 const FIELD_IMPRESSIONS = "Impressions";
 const FIELD_CLICKS = "Clicks";
 const FIELD_CTR = "CTR";
-const FIELD_GA_RAIN_EVENTS = "GA RAIN Events";
+const FIELD_GA_RAIN_EVENTS = "GA4 RAIN Conversions";
 const FIELD_CONV_RATE = "Conv Rate";
 const FIELD_CAMPAIGN_NAME = "Campaign Name";
 const FIELD_CAMPAIGN_NAME_H = "Campaign Name (h)";
@@ -57,12 +65,15 @@ const FIELD_AD_SIZE = "Ad Size";
 const FIELD_AD_THUMBNAIL = "Ad Image";
 const FIELD_CLICKS_RI = "Clicks - RI";
 const FIELD_BID_STRATEGY_H = "Bid Strategy (h)";
+const FIELD_X_AUTH_TOKEN = "Supernova X Auth Token (Calc)";
+const BID_STRATEGY_FOR_PAID_SEARCH = ["Paid Search", "Search"];
 
 const AGGREGATION_SKIP_DIMENSIONS = [
   FIELD_CAMPAIGN_NAME,
   FIELD_CAMPAIGN_NAME_H,
   FIELD_CAMPAIGN_NUMBER_H,
   FIELD_BID_STRATEGY_H,
+  FIELD_X_AUTH_TOKEN,
 ];
 
 const CALCULATED_VALUES = {
@@ -103,7 +114,7 @@ const CALCULATED_VALUES = {
     if (
       datoRows != null &&
       datoRows.length > 0 &&
-      datoRows[0][FIELD_BID_STRATEGY_H] === "Paid Search"
+      BID_STRATEGY_FOR_PAID_SEARCH.includes(datoRows[0][FIELD_BID_STRATEGY_H])
     ) {
       return `<img src="${SEARCH_AD_ICON_URL}" alt="Error" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
     }
@@ -133,9 +144,9 @@ const CALCULATED_VALUES = {
 const FIELD_DATA_FORMATTER = {
   [FIELD_IMPRESSIONS]: numberWithCommas,
   [FIELD_CLICKS]: numberWithCommas,
-  [FIELD_CTR]: percentageFormatter,
+  [FIELD_CTR]: (val) => percentageFormatter(val, 2),
   [FIELD_GA_RAIN_EVENTS]: numberWithCommas,
-  [FIELD_CONV_RATE]: percentageFormatter,
+  [FIELD_CONV_RATE]: (val) => percentageFormatter(val, 1),
 };
 
 const DIMENSIONS_TO_DISPLAY = [
@@ -173,12 +184,31 @@ const LOADER_HTML_WITH_CLASS = (klass) => {
   `;
 };
 
+const FLOATING_BUTTON = `
+  <button class="float exportPdfButton">
+  <i class="fa fa-file-pdf-o"></i>
+  </button>
+`;
+
+const FLOATING_DOWNLOAD_BUTTON = (href, fileName) => {
+  return `
+  <a class="downloadButton" id='downloadLink' href='${href}' download='${fileName}'>
+  Download
+  </a>
+`;
+};
+
 const LOADER_HTML = LOADER_HTML_WITH_CLASS("loading");
 
 let activeSwiper = null;
 let activeVideoPlayer = null;
 
 async function onLoad($) {
+  if (window.jsPDF == null || window.jsPDF === undefined) {
+    window.jsPDF = window.jspdf.jsPDF;
+  }
+
+  $("body").append(FLOATING_BUTTON);
   $("#creativeImageGallery").css("height", `${getHtmlHeight() - 50}px`);
   $("#creativeTableContainer").html(LOADER_HTML);
   $("#creativeImageGallery").html(LOADER_HTML);
@@ -217,6 +247,38 @@ async function onLoad($) {
     setTimeout(() => onAdNumberClicked(key, adsLink), 700);
   });
 
+  $("body").on("click", ".exportPdfButton", function (event) {
+    try {
+      console.log("Download button is clicked!");
+      const creativeTable = document.getElementById("creativeTableContainer");
+      const jsPdf = new jsPDF("p", "pt", "a4");
+      jsPdf.internal.scaleFactor = 2.25;
+
+      jsPdf.html(creativeTable, {
+        callback: function (doc) {
+          const blobUrl = jsPdf.output("bloburl");
+          console.log(blobUrl);
+          $("#downloadLink").remove();
+          const donwloadButton = FLOATING_DOWNLOAD_BUTTON(
+            blobUrl,
+            "Test file.pdf"
+          );
+          console.log(donwloadButton);
+
+          $("body").append(donwloadButton);
+        },
+        margin: [10, 10, 10, 10],
+        autoPaging: "text",
+        x: 0,
+        y: 0,
+        width: 190, //target width in the PDF document
+        windowWidth: 675, //window width in CSS pixels
+      });
+    } catch (err) {
+      console.log(err.message);
+    }
+  });
+
   if (aggregatedData.rows.length > 0) {
     const key = $("tbody").find("tr[role=adrow]:first").data("key");
     $("#creativeImageGallery").html(LOADER_HTML);
@@ -226,16 +288,31 @@ async function onLoad($) {
   }
 }
 
+function findSupernovaAuthToken(datoFieldIndex, result) {
+  try {
+    const ai = datoFieldIndex.dimensions[FIELD_X_AUTH_TOKEN];
+    return result.rows[0][ai].value;
+  } catch (err) {
+    return "";
+  }
+}
+
 async function fetchAdLinks(datoFieldIndex, result) {
-  const uniqueCampaignNumbers = findUniqueCampaignNumbers(
+  const uniqueCampaignNumbers = findUniqueCampaignNumbersAndAdNumbers(
     datoFieldIndex,
     result
   );
 
+  const authToken = findSupernovaAuthToken(datoFieldIndex, result);
   let adsLinkData = {};
 
   try {
-    adsLinkData = await $.get(API_ENDPOINT + uniqueCampaignNumbers.join(","));
+    adsLinkData = await $.ajax({
+      method: "POST",
+      url: API_ENDPOINT,
+      headers: { "X-AuthToken": authToken, "Content-Type": "application/json" },
+      data: JSON.stringify(uniqueCampaignNumbers),
+    });
   } catch (err) {
     console.log(err);
     adsLinkData = {};
@@ -351,12 +428,31 @@ function onAdNumberClicked(key, adsLink) {
         html += `</div>`;
       } else if (ad.mimeType.startsWith("text/html")) {
         const baseUrl = ad.url;
+        const frameWidth = $("#creativeImageGallery").width();
+        const frameHeight = $("#creativeImageGallery").height();
+        let adWidth = getWidth(ad.adSize);
+        if (adWidth < 10) {
+          adWidth = frameHeight;
+        }
+        adWidth += 10;
+
+        let adHeight = getHeight(ad.adSize);
+        if (adHeight < 10) {
+          adHeight = frameHeight;
+        }
+        adHeight += 10;
+
+        const wScale = frameWidth / adWidth;
+        const hScale = frameHeight / adHeight;
+
+        let rScale = wScale;
+        if (hScale < wScale) {
+          rScale = hScale;
+        }
+        rScale *= 0.95;
+
         html += LOADER_HTML_WITH_CLASS("animatedAdsLoader");
-        html += `<iframe role="animatedAdsPlayer" src="${baseUrl}" width="${$(
-          "#creativeImageGallery"
-        ).width()}" height="${$(
-          "#creativeImageGallery"
-        ).height()}" style="overflow: auto;">`;
+        html += `<iframe role="animatedAdsPlayer" src="${baseUrl}" width="${adWidth}" height="${adHeight}" style="border: 0; transform: scale(${rScale});">`;
         html += `</iframe>`;
       }
     });
@@ -402,6 +498,22 @@ function onAdNumberClicked(key, adsLink) {
   $("#creativeImageGallery").show();
 }
 
+function getHeight(size) {
+  try {
+    return parseFloat(size.split("x")[1].replace(/\D/g, ""));
+  } catch (err) {
+    return 0;
+  }
+}
+
+function getWidth(size) {
+  try {
+    return parseFloat(size.split("x")[0].replace(/\D/g, ""));
+  } catch (err) {
+    return 0;
+  }
+}
+
 function getHtmlHeight() {
   return $("html").height();
 }
@@ -426,6 +538,32 @@ function getAdLinkAggregationKey(datoFieldIndex, adDetailsRow) {
     key += "|" + value.replace("|", "||");
   });
   return encodeURIComponent(key);
+}
+
+function findUniqueCampaignNumbersAndAdNumbers(datoFieldIndex, result) {
+  const campaignNumbers = {};
+  const cnIndex = datoFieldIndex.dimensions[FIELD_CAMPAIGN_NUMBER_H];
+  const impressionIndex = datoFieldIndex.measurements[FIELD_IMPRESSIONS];
+  const adNumberIndex = datoFieldIndex.dimensions[FIELD_AD_NUMBER];
+
+  result.rows.forEach((row) => {
+    const campaignNumberH = row[cnIndex].value;
+    const campaignNumber = campaignNumberH.replace(/\D/g, "");
+
+    const impressions = parseMeasurement(row[impressionIndex].value);
+
+    const adNumber = row[adNumberIndex].value;
+
+    if (!isNaN(campaignNumber) && impressions > 0) {
+      if (!campaignNumbers.hasOwnProperty(campaignNumber)) {
+        campaignNumbers[campaignNumber] = [];
+      }
+
+      campaignNumbers[campaignNumber].push(adNumber);
+    }
+  });
+
+  return campaignNumbers;
 }
 
 function findUniqueCampaignNumbers(datoFieldIndex, result) {
@@ -455,10 +593,10 @@ function defaultFormatter(value) {
   return value;
 }
 
-function percentageFormatter(value) {
+function percentageFormatter(value, decplac) {
   if (value == null || value == "" || isNaN(value) || !isFinite(value))
-    return "0.00%";
-  else return parseFloat(value).toFixed(2) + "%";
+    return parseFloat(0).toFixed(decplac) + "%";
+  else return parseFloat(value).toFixed(decplac) + "%";
 }
 
 function numberWithCommas(x) {
@@ -476,7 +614,12 @@ function drawTableForAggregatedData(datoFieldIndex, aggregatedData) {
     scrollCollapse: true,
     paging: false,
     order: [[1, "asc"]],
+    buttons: ["copy"],
   });
+  table
+    .buttons()
+    .container()
+    .appendTo($("#buttons", table.table().container()));
 }
 
 function getFieldsOrderToDisplay(datoFieldIndex) {

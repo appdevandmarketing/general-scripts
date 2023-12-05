@@ -1,0 +1,28 @@
+.float{
+	position:fixed;
+
+	color:#FFF;
+	border-radius:50%;
+	text-align:center;
+	box-shadow: 2px 2px 3px #999;
+}
+
+.float:hover{
+	cursor: pointer;
+}
+
+.exportPdfButton{
+	margin-top: 5px;
+  	margin-left: 3px;
+	background-color:#0C9;
+	width:60px;
+	height:60px;
+	bottom:40px;
+	right:40px;
+}
+
+.downloadButton{
+	position: fixed;
+	right: 100px;
+	bottom: 60px;
+}

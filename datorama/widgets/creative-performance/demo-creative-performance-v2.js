@@ -36,8 +36,7 @@ const RANDOM_AD_THUMBNAILS = [
   "https://cdn1.rainlocal.com/asset/creative/4955/840/748ec127-1867-4.jpg",
 ];
 
-const API_ENDPOINT =
-  "https://supernovaapp.rainlocal.com/public/creative/adsLink/";
+const API_ENDPOINT = "https://xconnect.rainlocal.com/open/v1/creative/adsLink/";
 
 const FIELD_CAMPAIGN_NUMBER_H = "Campaign Number (h)";
 const FIELD_AD_NUMBER = "Ad Number";
@@ -54,12 +53,14 @@ const FIELD_AD_SIZE = "Ad Size";
 const FIELD_AD_THUMBNAIL = "Ad Image";
 const FIELD_CLICKS_RI = "Clicks - RI";
 const FIELD_BID_STRATEGY_H = "Bid Strategy (h)";
+const FIELD_X_AUTH_TOKEN = "Supernova X Auth Token (Calc)";
 
 const AGGREGATION_SKIP_DIMENSIONS = [
   FIELD_CAMPAIGN_NAME,
   FIELD_CAMPAIGN_NAME_H,
   FIELD_CAMPAIGN_NUMBER_H,
   FIELD_BID_STRATEGY_H,
+  FIELD_X_AUTH_TOKEN,
 ];
 
 const CALCULATED_VALUES = {
@@ -178,16 +179,30 @@ async function onLoad($) {
   }
 }
 
+function findSupernovaAuthToken(datoFieldIndex, result) {
+  try {
+    const ai = datoFieldIndex.dimensions[FIELD_X_AUTH_TOKEN];
+    return result.rows[0][ai].value;
+  } catch (err) {
+    return "";
+  }
+}
+
 async function fetchAdLinks(datoFieldIndex, result) {
   const uniqueCampaignNumbers = findUniqueCampaignNumbers(
     datoFieldIndex,
     result
   );
 
+  const authToken = findSupernovaAuthToken(datoFieldIndex, result);
   let adsLinkData = {};
 
   try {
-    adsLinkData = await $.get(API_ENDPOINT + uniqueCampaignNumbers.join(","));
+    adsLinkData = await $.ajax({
+      url: API_ENDPOINT + uniqueCampaignNumbers.join(","),
+      headers: { "X-AuthToken": authToken },
+    });
+
     Object.entries(adsLinkData).forEach(([adNumber, rows]) => {
       rows.forEach((row) => {
         const random =

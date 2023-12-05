@@ -32,7 +32,7 @@ async function onLoad($) {
   const C_ZOOM_LEVEL = 10;
   const CTL_ZOOM_LEVEL = 12;
   const CT_ZOOM_LEVEL = 14;
-  const API_URL = "https://supernovaapp.rainlocal.com/campaign/targets/";
+  const API_URL = "https://xconnect.rainlocal.com/open/v1/campaign/targets/";
 
   const activeMarker = {
     url: "https://cdn1.rainlocal.com/asset/scripts/datorama/widgets/map/map-marker-selected.svg",
@@ -207,6 +207,30 @@ async function onLoad($) {
     return -1;
   }
 
+  function findAuthTokenIndex(results) {
+    const fields = results.fields;
+    for (let i = 0; i < fields.length; i++) {
+      if (fields[i].defaultName.includes("Supernova X Auth Token")) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  function findSupernovaAuthToken() {
+    try {
+      if (forScreenshot) {
+        const token = urlParams.get("xAuthToken");
+        return token;
+      } else {
+        const results = DA.query.getQueryResult();
+        return results.rows[0][findAuthTokenIndex(results)].value;
+      }
+    } catch (err) {
+      return "";
+    }
+  }
+
   function findValidCampaignNumbers() {
     if (forScreenshot) {
       const campaignNumber = urlParams.get("campaignId");
@@ -256,13 +280,18 @@ async function onLoad($) {
 
   async function loadMapDataFromAPI() {
     const campaignNumbers = findValidCampaignNumbers();
+    const authToken = findSupernovaAuthToken();
+
     const loadedCoordinates = [];
 
     for (let index = 0; index < campaignNumbers.length; index++) {
       if (index > 10) break;
       const campaignNumber = campaignNumbers[index];
 
-      const response = await $.get(API_URL + campaignNumber);
+      const response = await $.ajax({
+        url: API_URL + campaignNumber,
+        headers: { "X-AuthToken": authToken },
+      });
 
       response.campaignTargetLists.forEach((targetList) => {
         let isCampaignTargetListLoaded = false;

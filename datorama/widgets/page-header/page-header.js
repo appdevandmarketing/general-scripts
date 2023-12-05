@@ -19,6 +19,7 @@ $(document).ready(function () {
     VFW: "Veterans of Foreign Wars",
     "Velocity Community Federal Credit Union":
       "Velocity Community Credit Union",
+    "Strategy Corps": "StrategyCorps",
   };
 
   console.log("Trying from filter!");

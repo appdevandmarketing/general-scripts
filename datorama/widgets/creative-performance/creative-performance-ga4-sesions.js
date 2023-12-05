@@ -39,8 +39,7 @@ const VIDEO_PLAYER_ICON_URL =
 const ICON_URL_CODE_OUTLINE =
   "https://cdn1.rainlocal.com/asset/icon/generic/code-outline.png";
 
-const API_ENDPOINT =
-  "https://supernovaapp.rainlocal.com/public/creative/adsLink/";
+const API_ENDPOINT = "https://xconnect.rainlocal.com/open/v1/creative/adsLink2";
 
 const FIELD_CAMPAIGN_NUMBER_H = "Campaign Number (h)";
 const FIELD_AD_NUMBER = "Ad Number";
@@ -57,12 +56,15 @@ const FIELD_AD_SIZE = "Ad Size";
 const FIELD_AD_THUMBNAIL = "Ad Image";
 const FIELD_CLICKS_RI = "Clicks - RI";
 const FIELD_BID_STRATEGY_H = "Bid Strategy (h)";
+const FIELD_X_AUTH_TOKEN = "Supernova X Auth Token (Calc)";
+const BID_STRATEGY_FOR_PAID_SEARCH = ["Paid Search", "Search"];
 
 const AGGREGATION_SKIP_DIMENSIONS = [
   FIELD_CAMPAIGN_NAME,
   FIELD_CAMPAIGN_NAME_H,
   FIELD_CAMPAIGN_NUMBER_H,
   FIELD_BID_STRATEGY_H,
+  FIELD_X_AUTH_TOKEN,
 ];
 
 const CALCULATED_VALUES = {
@@ -103,7 +105,7 @@ const CALCULATED_VALUES = {
     if (
       datoRows != null &&
       datoRows.length > 0 &&
-      datoRows[0][FIELD_BID_STRATEGY_H] === "Paid Search"
+      BID_STRATEGY_FOR_PAID_SEARCH.includes(datoRows[0][FIELD_BID_STRATEGY_H])
     ) {
       return `<img src="${SEARCH_AD_ICON_URL}" alt="Error" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
     }
@@ -226,16 +228,31 @@ async function onLoad($) {
   }
 }
 
+function findSupernovaAuthToken(datoFieldIndex, result) {
+  try {
+    const ai = datoFieldIndex.dimensions[FIELD_X_AUTH_TOKEN];
+    return result.rows[0][ai].value;
+  } catch (err) {
+    return "";
+  }
+}
+
 async function fetchAdLinks(datoFieldIndex, result) {
-  const uniqueCampaignNumbers = findUniqueCampaignNumbers(
+  const uniqueCampaignNumbers = findUniqueCampaignNumbersAndAdNumbers(
     datoFieldIndex,
     result
   );
 
+  const authToken = findSupernovaAuthToken(datoFieldIndex, result);
   let adsLinkData = {};
 
   try {
-    adsLinkData = await $.get(API_ENDPOINT + uniqueCampaignNumbers.join(","));
+    adsLinkData = await $.ajax({
+      method: "POST",
+      url: API_ENDPOINT,
+      headers: { "X-AuthToken": authToken, "Content-Type": "application/json" },
+      data: JSON.stringify(uniqueCampaignNumbers),
+    });
   } catch (err) {
     console.log(err);
     adsLinkData = {};
@@ -461,6 +478,32 @@ function getAdLinkAggregationKey(datoFieldIndex, adDetailsRow) {
     key += "|" + value.replace("|", "||");
   });
   return encodeURIComponent(key);
+}
+
+function findUniqueCampaignNumbersAndAdNumbers(datoFieldIndex, result) {
+  const campaignNumbers = {};
+  const cnIndex = datoFieldIndex.dimensions[FIELD_CAMPAIGN_NUMBER_H];
+  const impressionIndex = datoFieldIndex.measurements[FIELD_IMPRESSIONS];
+  const adNumberIndex = datoFieldIndex.dimensions[FIELD_AD_NUMBER];
+
+  result.rows.forEach((row) => {
+    const campaignNumberH = row[cnIndex].value;
+    const campaignNumber = campaignNumberH.replace(/\D/g, "");
+
+    const impressions = parseMeasurement(row[impressionIndex].value);
+
+    const adNumber = row[adNumberIndex].value;
+
+    if (!isNaN(campaignNumber) && impressions > 0) {
+      if (!campaignNumbers.hasOwnProperty(campaignNumber)) {
+        campaignNumbers[campaignNumber] = [];
+      }
+
+      campaignNumbers[campaignNumber].push(adNumber);
+    }
+  });
+
+  return campaignNumbers;
 }
 
 function findUniqueCampaignNumbers(datoFieldIndex, result) {
