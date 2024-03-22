@@ -24,6 +24,12 @@ importScripts([
 });
 
 async function onLoad($) {
+  const TO_EXCLUDE_COUNTIES = {
+    "First Commonwealth Bank": ["Bucks County", "Chester County"],
+  };
+  const TO_EXCLUDE_BRANCHES = {
+    "First Commonwealth Bank": ["Devon", "Doylestown"],
+  };
   const TRACTS_API_URL =
     "https://xconnect.rainlocal.com/open/v1/campaign/targets/cra-tracts/";
   const BRANCHES_API_URl =
@@ -41,11 +47,25 @@ async function onLoad($) {
 
   const authToken = findSupernovaAuthToken();
   const campaignNumbers = findValidCampaignNumbers();
+  const datoAdvertiserName = getDatoAdvertiserName();
 
-  const tracts = await getCraTractsInformation(campaignNumbers);
-  const branchesInformation = await getBranchesInformation(
-    "First Commonwealth Bank"
-  );
+  let tracts = await getCraTractsInformation(campaignNumbers);
+  if (TO_EXCLUDE_COUNTIES.hasOwnProperty(datoAdvertiserName)) {
+    tracts = tracts.filter(
+      (tract) =>
+        !TO_EXCLUDE_COUNTIES[datoAdvertiserName].includes(
+          JSON.parse(tract.properties).NAMELSADCO
+        )
+    );
+  }
+
+  let branchesInformation = await getBranchesInformation(datoAdvertiserName);
+
+  if (TO_EXCLUDE_BRANCHES.hasOwnProperty(datoAdvertiserName)) {
+    branchesInformation = branchesInformation.filter(
+      (bi) => !TO_EXCLUDE_BRANCHES[datoAdvertiserName].includes(bi.branchName)
+    );
+  }
 
   const geocoder = new google.maps.Geocoder();
 
@@ -98,8 +118,6 @@ async function onLoad($) {
       return branch;
     })
   );
-
-  console.log(JSON.stringify(formattedBranches));
 
   tracts.forEach((tract) => {
     const geoJson = JSON.parse(tract.geoData);
@@ -156,6 +174,18 @@ STATE: ${feature.getProperty("STATE_NAME")}
       }
     }
   });
+
+  function getDatoAdvertiserName() {
+    const query = DA.query.getQuery();
+    const filter = query.filter;
+    const values = Object.entries(filter);
+    for (let [_, value] of values) {
+      if (value.name.includes("Advertiser")) {
+        return value.value[0].value[0];
+      }
+    }
+    return "Unknown";
+  }
 
   function fitBoundsAroundLatLong(latLng) {
     const boundsArray = [];
@@ -231,12 +261,12 @@ STATE: ${feature.getProperty("STATE_NAME")}
       } else {
         geocoder.geocode({ address: rowData[0] }, function (results, status) {
           if (status === "OK") {
-            console.log(
-              "Latitude and longitude found for address: " +
-                rowData[0] +
-                " as: " +
-                results[0].geometry.location
-            );
+            // console.log(
+            //   "Latitude and longitude found for address: " +
+            //     rowData[0] +
+            //     " as: " +
+            //     results[0].geometry.location
+            // );
             const latLong = results[0].geometry.location;
             resolve(latLong);
           } else {
