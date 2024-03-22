@@ -256,7 +256,11 @@ async function onLoad($) {
         ) {
           const campaignNameH = row[campaignHIndex].value;
           const campaignName = row[campaignNameIndex].value;
-          if (campaignName == null || campaignName == "") {
+          if (
+            campaignName == null ||
+            campaignName == "" ||
+            !campaignName.includes(campaignNameH)
+          ) {
             return;
           }
         }
