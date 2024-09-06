@@ -64,7 +64,7 @@ const FIELD_CLICKS_RI = "Clicks - RI";
 const FIELD_BID_STRATEGY_H = "Bid Strategy (h)";
 const FIELD_X_AUTH_TOKEN = "Supernova X Auth Token (Calc)";
 const BID_STRATEGY_FOR_PAID_SEARCH = ["Paid Search", "Search"];
-const FIELD_RAIN_PERFORMANCE_SCORE = "Rain Performance Score";
+const FIELD_RAIN_PERFORMANCE_SCORE = "RAIN Performance Score";
 
 const AGGREGATION_SKIP_DIMENSIONS = [
   FIELD_CAMPAIGN_NAME,
