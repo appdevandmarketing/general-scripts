@@ -8,7 +8,10 @@ importScripts([
     "css",
     "https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css",
   ],
-  ["css", "https://cdn.jsdelivr.net/npm/swiper/swiper-bundle.min.css"],
+  [
+    "css",
+    "https://cdnjs.cloudflare.com/ajax/libs/Swiper/11.0.5/swiper-bundle.css",
+  ],
   [
     "css",
     "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css",
@@ -24,7 +27,10 @@ importScripts([
     "js",
     "https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js",
   ],
-  ["js", "https://cdn.jsdelivr.net/npm/swiper/swiper-bundle.min.js"],
+  [
+    "js",
+    "https://cdnjs.cloudflare.com/ajax/libs/Swiper/11.0.5/swiper-bundle.min.js",
+  ],
   ["js", "https://vjs.zencdn.net/7.20.3/video.min.js"],
 ]).then(function () {
   jQuery(onLoad);
@@ -120,11 +126,11 @@ const CALCULATED_VALUES = {
         );
 
         if (imageAds.length > 0) {
-          return `<img src="${imageAds[0].url}" alt="${imageAds[0].adFileName}" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: cover;"></img>`;
+          return `<img src="${imageAds[0].thumbnailUrl}" alt="${imageAds[0].adFileName}" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: cover;"></img>`;
         } else if (videoAds.length > 0) {
-          return `<img src="${VIDEO_PLAYER_ICON_URL}" alt="Video" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
+          return `<img src="${videoAds[0].thumbnailUrl}" alt="Video" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
         } else if (animatedAds.length > 0) {
-          return `<img src="${ICON_URL_CODE_OUTLINE}" alt="Video" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
+          return `<img src="${animatedAds[0].thumbnailUrl}" alt="Video" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
         }
       }
     }
@@ -271,9 +277,7 @@ async function fetchAdLinks(datoFieldIndex, result) {
 }
 
 function filterBestFitAds(adsDetails) {
-  const maxHeight = getHtmlHeight();
-  const galleryWidth = $("#creativeImageGallery").width();
-  const widthByHeightRatio = galleryWidth / maxHeight;
+  const widthByHeightRatio = 1;
 
   const fitRatioDeltaToAdDetails = {};
   let bestFitRatioDelta = Number.MAX_VALUE;
@@ -575,6 +579,12 @@ function getFieldsOrderToDisplay(datoFieldIndex) {
 }
 
 function buildHtmlTable(allFields, aggregatedData) {
+  const sortedRows = Object.entries(aggregatedData.rowsByKey)
+    .sort((a, b) => {
+      return b[1]["CTR"] - a[1]["CTR"];
+    })
+    .slice(0, 5);
+
   console.log("all fields " + JSON.stringify(allFields));
   let html =
     '<table id="creativeTable" class="stripe row-border order-column nowrap" style="width: 100%;">';
@@ -587,7 +597,7 @@ function buildHtmlTable(allFields, aggregatedData) {
   {
     html += "<tbody>";
 
-    Object.entries(aggregatedData.rowsByKey).forEach(([key, row]) => {
+    sortedRows.forEach(([key, row]) => {
       html += `<tr data-key="${key}" role="adrow">`;
 
       allFields.forEach((field) => {
@@ -612,16 +622,58 @@ function buildHtmlTable(allFields, aggregatedData) {
   }
   {
     html += "<tfoot><tr>";
+    let totalClicks = 0;
+    let totalImpressions = 0;
+    let totalGARainEvent = 0;
+
     allFields.forEach((field) => {
-      const value = aggregatedData.total[field];
-      let formattedValue = value;
-      if (field in FIELD_DATA_FORMATTER) {
-        formattedValue = FIELD_DATA_FORMATTER[field](formattedValue);
+      if (
+        field !== FIELD_AD_NUMBER &&
+        field !== FIELD_AD_THUMBNAIL &&
+        field !== "CTR" &&
+        field !== "Conv Rate"
+      ) {
+        const total = sortedRows.reduce((acc, [key, row]) => {
+          return acc + row[field];
+        }, 0);
+        if (field === FIELD_CLICKS) {
+          totalClicks = total;
+        }
+        if (field === FIELD_IMPRESSIONS) {
+          totalImpressions = total;
+        }
+        if (field === FIELD_GA_RAIN_EVENTS) {
+          totalGARainEvent = total;
+        }
+        let formattedTotal = total;
+        if (field in FIELD_DATA_FORMATTER) {
+          formattedTotal = FIELD_DATA_FORMATTER[field](formattedTotal);
+        } else {
+          formattedTotal = defaultFormatter(formattedTotal);
+        }
+        html += `<td>${formattedTotal}</td>`;
       } else {
-        formattedValue = defaultFormatter(formattedValue);
+        if (field === FIELD_AD_THUMBNAIL) {
+          html += `<td>Total</td>`;
+        } else if (field === FIELD_CTR) {
+          const ctr = FIELD_DATA_FORMATTER[FIELD_CTR](
+            totalImpressions !== 0 ? (100 * totalClicks) / totalImpressions : 0,
+            2
+          );
+          html += `<td>${ctr}</td>`;
+        } else if (field === FIELD_CONV_RATE) {
+          const convRate = FIELD_DATA_FORMATTER[FIELD_CONV_RATE](
+            totalClicks !== 0 ? (totalGARainEvent / totalClicks) * 100 : 0,
+            1
+          );
+
+          html += `<td>${convRate}</td>`;
+        } else {
+          html += `<td></td>`;
+        }
       }
-      html += `<td>${formattedValue}</td>`;
     });
+
     html += "</tr><tfoot>";
   }
   html += `</tr></thead>`;
