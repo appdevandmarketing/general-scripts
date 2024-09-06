@@ -64,6 +64,7 @@ const FIELD_CLICKS_RI = "Clicks - RI";
 const FIELD_BID_STRATEGY_H = "Bid Strategy (h)";
 const FIELD_X_AUTH_TOKEN = "Supernova X Auth Token (Calc)";
 const BID_STRATEGY_FOR_PAID_SEARCH = ["Paid Search", "Search"];
+const FIELD_RAIN_PERFORMANCE_SCORE = "Rain Performance Score";
 
 const AGGREGATION_SKIP_DIMENSIONS = [
   FIELD_CAMPAIGN_NAME,
@@ -77,6 +78,47 @@ const CALCULATED_VALUES = {
   [FIELD_CTR]: (row, datoFieldIndex, adLinks, istotalField, datoRows) => {
     if (row[FIELD_IMPRESSIONS] == 0) return 0;
     return (row[FIELD_CLICKS] / row[FIELD_IMPRESSIONS]) * 100;
+  },
+  [FIELD_RAIN_PERFORMANCE_SCORE]: (
+    row,
+    datoFieldIndex,
+    adsLink,
+    istotalField,
+    datoRows,
+    allObjects
+  ) => {
+    try {
+      const bidStrategy = datoRows[0][FIELD_BID_STRATEGY_H];
+      const impressionScoreWeight = 0.15;
+      const ctrScoreWeight = 0.55;
+      const conversionScoreWeight = 0.3;
+
+      const bidStrategies = Object.entries(allObjects)
+        .flatMap(([key, list]) => list)
+        .map((it) => it[FIELD_BID_STRATEGY_H]);
+      //.filter(it => it[FIELD_BID_STRATEGY_H] == bidStrategy).reduce((acc, r) => acc + r[FIELD_IMPRESSIONS], 0)
+
+      // const totalImpressions = istotalField ? row[FIELD_IMPRESSIONS] : Object.entries(allObjects).flatMap(([key, list]) => list).filter(it => it[FIELD_BID_STRATEGY_H] == bidStrategy).reduce((acc, r) => acc + r[FIELD_IMPRESSIONS], 0)
+      const totalImpressions = istotalField
+        ? row[FIELD_IMPRESSIONS]
+        : Object.entries(allObjects)
+            .flatMap(([key, list]) => list)
+            .reduce((acc, r) => acc + r[FIELD_IMPRESSIONS], 0);
+
+      const impressionScore =
+        divide(row[FIELD_IMPRESSIONS], totalImpressions) *
+        impressionScoreWeight;
+      const ctrScore =
+        divide(row[FIELD_CLICKS], row[FIELD_IMPRESSIONS]) * ctrScoreWeight;
+      const conversionScore =
+        divide(row[FIELD_GA_RAIN_EVENTS], row[FIELD_CLICKS]) *
+        conversionScoreWeight;
+
+      return (impressionScore + ctrScore + conversionScore) * 100;
+    } catch (err) {
+      console.log(err);
+      return 0;
+    }
   },
   [FIELD_CONV_RATE]: (row, datoFieldIndex, adLinks, istotalField, datoRows) => {
     if (row[FIELD_CLICKS] == 0) return 0;
@@ -144,6 +186,7 @@ const FIELD_DATA_FORMATTER = {
   [FIELD_CTR]: (val) => percentageFormatter(val, 2),
   [FIELD_GA_RAIN_EVENTS]: numberWithCommas,
   [FIELD_CONV_RATE]: (val) => percentageFormatter(val, 1),
+  [FIELD_RAIN_PERFORMANCE_SCORE]: (val) => percentageFormatter(val, 2),
 };
 
 const DIMENSIONS_TO_DISPLAY = [
@@ -159,6 +202,7 @@ const MEASUREMENTS_TO_DISPLAY = [
   FIELD_CTR,
   FIELD_GA_RAIN_EVENTS,
   FIELD_CONV_RATE,
+  FIELD_RAIN_PERFORMANCE_SCORE,
 ];
 
 const DATO_TO_API_DATA_FUSION = {
@@ -185,6 +229,17 @@ const LOADER_HTML = LOADER_HTML_WITH_CLASS("loading");
 
 let activeSwiper = null;
 let activeVideoPlayer = null;
+
+function divide(num, den) {
+  try {
+    if (den == 0) {
+      return 0;
+    }
+    return num / den;
+  } catch (err) {
+    return 0;
+  }
+}
 
 async function onLoad($) {
   $("#creativeImageGallery").remove();
@@ -761,7 +816,8 @@ function aggregateRows(datoFieldIndex, rows, adsLink) {
         datoFieldIndex,
         adsLink,
         false,
-        aggregatedRowObjects[key]
+        aggregatedRowObjects[key],
+        aggregatedRowObjects
       );
     });
     return newRow;
