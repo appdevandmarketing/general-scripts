@@ -1,0 +1,5 @@
+#__da-app-content{ overflow:hidden !important; }
+body{ font-family: 'Lato', sans-serif; overflow:hidden; margin:0; padding:0; }
+#title{ margin-top:15px; color: rgba(0, 1, 2, 0.70); font-size:22px; }
+i{ margin-right:15px; color:#2B6CB0; }
+a{color:#24a5de;}

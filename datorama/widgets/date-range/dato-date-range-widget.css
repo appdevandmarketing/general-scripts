@@ -1,0 +1,7 @@
+@import url('https://fonts.googleapis.com/css?family=Lato:300,400,600,700,800,900');
+#__da-app-content{ overflow:hidden !important; }
+body{ font-family: 'Lato', sans-serif; overflow:hidden; margin:0; padding:0; }
+#logo{ height:50px; margin:8px 0 0 3.33%; }
+#note{ position: absolute; right:3.33%; top:23px; font-size:18px;
+    color:#A0AEC0; font-weight:400; }
+#note b{ color:#24a5de; cursor:pointer; }
