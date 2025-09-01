@@ -1,20 +1,31 @@
 function createPerformanceHeaderHTML(filter) {
-    const startDate = filter.date.startDate;
-    const endDate = filter.date.endDate;
+  const startDate = filter.date.startDate;
+  const endDate = filter.date.endDate;
 
-    // Format dates to "01 Mar 2025" format
-    const formatDate = (dateString) => {
-        const date = new Date(dateString);
-        const day = date.getDate().toString().padStart(2, '0');
-        const month = date.toLocaleDateString('en-US', { month: 'short' });
-        const year = date.getFullYear();
-        return `${day} ${month} ${year}`;
-    };
+  const MONTHS = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
 
-    const formattedStartDate = formatDate(startDate);
-    const formattedEndDate = formatDate(endDate);
+  const formatDate = (yyyyMmDd) => {
+    const [y, m, d] = yyyyMmDd.split("-").map(Number);
+    return `${String(d).padStart(2, "0")} ${MONTHS[m - 1]} ${y}`;
+  };
 
-    return `
+  const formattedStartDate = formatDate(startDate);
+  const formattedEndDate = formatDate(endDate);
+
+  return `
         <div id="header">
             <img id="logo" src="https://rainlocal.com/wp-content/uploads/2018/11/Rain-Horizontal.png"/>
         </div>
@@ -23,7 +34,11 @@ function createPerformanceHeaderHTML(filter) {
         </div>
     `;
 }
-const filter = DA.query.getQuery()
+const filter = DA.query.getQuery();
 const htmlElement = createPerformanceHeaderHTML(filter);
-document.getElementById("widget-container").innerHTML = htmlElement
-
+const container = document.getElementById("rain-widget-container");
+if (container != null) {
+  container.innerHTML = htmlElement;
+} else {
+  document.getElementById("widget-container").innerHTML = htmlElement;
+}

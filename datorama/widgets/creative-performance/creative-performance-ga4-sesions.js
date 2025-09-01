@@ -1,37 +1,53 @@
 importScripts([
-  ["css", "https://cdn.datatables.net/1.12.1/css/jquery.dataTables.min.css"],
+  ["js", "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"],
+
   [
-      "css",
-      "https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.2/css/bootstrap.min.css",
+    "css",
+    "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css",
   ],
   [
-      "css",
-      "https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css",
+    "css",
+    "https://cdn1.rainlocal.com/asset/scripts/datorama/widgets/creative-performance/creative-performance.css",
+  ],
+  ["css", "https://cdn.datatables.net/1.12.1/css/jquery.dataTables.min.css"],
+  [
+    "css",
+    "https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.2/css/bootstrap.min.css",
+  ],
+  [
+    "css",
+    "https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css",
   ],
   ["css", "https://cdn.jsdelivr.net/npm/swiper/swiper-bundle.min.css"],
   [
-      "css",
-      "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css",
+    "css",
+    "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css",
   ],
   ["css", "https://vjs.zencdn.net/7.20.3/video-js.css"],
 
   ["js", "https://cdn.datatables.net/1.12.1/js/jquery.dataTables.min.js"],
   [
-      "js",
-      "https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.2/js/bootstrap.min.js",
+    "js",
+    "https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.2/js/bootstrap.min.js",
   ],
   [
-      "js",
-      "https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js",
+    "js",
+    "https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js",
   ],
   ["js", "https://cdn.jsdelivr.net/npm/swiper/swiper-bundle.min.js"],
   ["js", "https://vjs.zencdn.net/7.20.3/video.min.js"],
+  [
+    "js",
+    "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.0/jspdf.plugin.autotable.min.js",
+  ],
 ]).then(function () {
   jQuery(onLoad);
 });
 
 const SEARCH_AD_ICON_URL =
   "https://cdn1.rainlocal.com/asset/scripts/datorama/widgets/creative-performance/search_ad_icon.png";
+const AUDIO_AD_ICON_URL =
+  "https://cdn1.rainlocal.com/asset/scripts/datorama/widgets/creative-performance/audio-icon.png";
 const ALERT_ICON_URL =
   "https://cdn1.rainlocal.com/asset/scripts/datorama/widgets/creative-performance/alert-icon.svg";
 const VIDEO_PLAYER_ICON_URL =
@@ -60,6 +76,11 @@ const FIELD_X_AUTH_TOKEN = "Supernova X Auth Token (Calc)";
 const FIELD_RAIN_PERFORMANCE_SCORE = "RAIN Performance Score";
 const BID_STRATEGY_FOR_PAID_SEARCH = ["Paid Search", "Search"];
 
+// Check for audio type, Code : C
+function endsWithCOrCAndNumbers(str) {
+  return /C(\d+)?$/.test(str);
+}
+
 const AGGREGATION_SKIP_DIMENSIONS = [
   FIELD_CAMPAIGN_NAME,
   FIELD_CAMPAIGN_NAME_H,
@@ -69,94 +90,114 @@ const AGGREGATION_SKIP_DIMENSIONS = [
 ];
 
 const CALCULATED_VALUES = {
-  [FIELD_RAIN_PERFORMANCE_SCORE]: (row, datoFieldIndex, adsLink, istotalField, datoRows, allObjects) => {
-      try {
-          const bidStrategy = datoRows[0][FIELD_BID_STRATEGY_H]
-          const impressionScoreWeight = 0.15;
-          const ctrScoreWeight = 0.55;
-          const conversionScoreWeight = 0.3;
+  [FIELD_RAIN_PERFORMANCE_SCORE]: (
+    row,
+    datoFieldIndex,
+    adsLink,
+    istotalField,
+    datoRows,
+    allObjects
+  ) => {
+    try {
+      const bidStrategy = datoRows[0][FIELD_BID_STRATEGY_H];
+      const impressionScoreWeight = 0.15;
+      const ctrScoreWeight = 0.55;
+      const conversionScoreWeight = 0.3;
 
+      const bidStrategies = Object.entries(allObjects)
+        .flatMap(([key, list]) => list)
+        .map((it) => it[FIELD_BID_STRATEGY_H]);
+      //.filter(it => it[FIELD_BID_STRATEGY_H] == bidStrategy).reduce((acc, r) => acc + r[FIELD_IMPRESSIONS], 0)
 
-          const bidStrategies = Object.entries(allObjects).flatMap(([key, list]) => list).map(it=>it[FIELD_BID_STRATEGY_H])
-          //.filter(it => it[FIELD_BID_STRATEGY_H] == bidStrategy).reduce((acc, r) => acc + r[FIELD_IMPRESSIONS], 0)
+      // const totalImpressions = istotalField ? row[FIELD_IMPRESSIONS] : Object.entries(allObjects).flatMap(([key, list]) => list).filter(it => it[FIELD_BID_STRATEGY_H] == bidStrategy).reduce((acc, r) => acc + r[FIELD_IMPRESSIONS], 0)
+      const totalImpressions = istotalField
+        ? row[FIELD_IMPRESSIONS]
+        : Object.entries(allObjects)
+            .flatMap(([key, list]) => list)
+            .reduce((acc, r) => acc + r[FIELD_IMPRESSIONS], 0);
 
-         // const totalImpressions = istotalField ? row[FIELD_IMPRESSIONS] : Object.entries(allObjects).flatMap(([key, list]) => list).filter(it => it[FIELD_BID_STRATEGY_H] == bidStrategy).reduce((acc, r) => acc + r[FIELD_IMPRESSIONS], 0)
-          const totalImpressions = istotalField ? row[FIELD_IMPRESSIONS] : Object.entries(allObjects).flatMap(([key, list]) => list).reduce((acc, r) => acc + r[FIELD_IMPRESSIONS], 0)
+      const impressionScore =
+        divide(row[FIELD_IMPRESSIONS], totalImpressions) *
+        impressionScoreWeight;
+      const ctrScore =
+        divide(row[FIELD_CLICKS], row[FIELD_IMPRESSIONS]) * ctrScoreWeight;
+      const conversionScore =
+        divide(row[FIELD_GA_RAIN_EVENTS], row[FIELD_CLICKS]) *
+        conversionScoreWeight;
 
-          const impressionScore = divide(row[FIELD_IMPRESSIONS], totalImpressions) * impressionScoreWeight;
-          const ctrScore = divide(row[FIELD_CLICKS], row[FIELD_IMPRESSIONS]) * ctrScoreWeight;
-          const conversionScore = divide(row[FIELD_GA_RAIN_EVENTS], row[FIELD_CLICKS]) * conversionScoreWeight;
-
-          return (impressionScore
-              + ctrScore
-              + conversionScore)*100
-
-      } catch (err) {
-          console.log(err)
-          return 0
-      }
+      return (impressionScore + ctrScore + conversionScore) * 100;
+    } catch (err) {
+      console.log(err);
+      return 0;
+    }
   },
   [FIELD_CTR]: (row, datoFieldIndex, adLinks, istotalField, datoRows) => {
-      if (row[FIELD_IMPRESSIONS] == 0) return 0;
-      return (row[FIELD_CLICKS] / row[FIELD_IMPRESSIONS]) * 100;
+    if (row[FIELD_IMPRESSIONS] == 0) return 0;
+    return (row[FIELD_CLICKS] / row[FIELD_IMPRESSIONS]) * 100;
   },
   [FIELD_CONV_RATE]: (row, datoFieldIndex, adLinks, istotalField, datoRows) => {
-      if (row[FIELD_CLICKS] == 0) return 0;
-      let clicks = row[FIELD_CLICKS];
-      if (FIELD_CLICKS_RI in row) {
-          clicks = row[FIELD_CLICKS_RI];
-      }
-      return (row[FIELD_GA_RAIN_EVENTS] / clicks) * 100;
+    if (row[FIELD_CLICKS] == 0) return 0;
+    let clicks = row[FIELD_CLICKS];
+    if (FIELD_CLICKS_RI in row) {
+      clicks = row[FIELD_CLICKS_RI];
+    }
+    return (row[FIELD_GA_RAIN_EVENTS] / clicks) * 100;
   },
   [FIELD_AD_THUMBNAIL]: (
-      row,
-      datoFieldIndex,
-      adLinks,
-      istotalField,
-      datoRows
+    row,
+    datoFieldIndex,
+    adLinks,
+    istotalField,
+    datoRows
   ) => {
-      const thumbHeight = 60;
-      const thumbWidth = 60;
+    const thumbHeight = 60;
+    const thumbWidth = 60;
 
-      const adKey = getAggregationKey(datoFieldIndex, row);
+    const adKey = getAggregationKey(datoFieldIndex, row);
 
-      if (istotalField) return "Total";
+    if (istotalField) return "Total";
 
-      if (row[FIELD_AD_NUMBER] === "Unattributed") {
-          return `<img src="${ALERT_ICON_URL}" alt="Error" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
+    if (row[FIELD_AD_NUMBER] === "Unattributed") {
+      return `<img src="${ALERT_ICON_URL}" alt="Error" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;" onload="onImageLoaded(this)" crossorigin="anonymous"></img>`;
+    }
+
+    if (row[FIELD_AD_NUMBER].endsWith("A")) {
+      return `<img src="${ICON_URL_CODE_OUTLINE}" alt="Video" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;" onload="onImageLoaded(this)" crossorigin="anonymous"></img>`;
+    }
+
+    if (
+      datoRows != null &&
+      datoRows.length > 0 &&
+      BID_STRATEGY_FOR_PAID_SEARCH.includes(datoRows[0][FIELD_BID_STRATEGY_H])
+    ) {
+      return `<img src="${SEARCH_AD_ICON_URL}" alt="Error" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;" onload="onImageLoaded(this)" crossorigin="anonymous"></img>`;
+    } else if (
+      datoRows != null &&
+      datoRows.length > 0 &&
+      endsWithCOrCAndNumbers(datoRows[0][FIELD_AD_NUMBER])
+    ) {
+      return `<img src="${AUDIO_AD_ICON_URL}" alt="Error" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;" onload="onImageLoaded(this)" crossorigin="anonymous"></img>`;
+    }
+
+    if (adKey in adLinks) {
+      const ads = filterBestFitAds(adLinks[adKey]);
+      if (ads.length > 0) {
+        const imageAds = ads.filter((a) => a.mimeType.startsWith("image/", 0));
+        const videoAds = ads.filter((a) => a.mimeType.startsWith("video/", 0));
+        const animatedAds = ads.filter((a) =>
+          a.mimeType.startsWith("text/html", 0)
+        );
+
+        if (imageAds.length > 0) {
+          return `<img src="${imageAds[0].url}" alt="${imageAds[0].adFileName}" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: cover;" onload="onImageLoaded(this)" crossorigin="anonymous"></img>`;
+        } else if (videoAds.length > 0) {
+          return `<img src="${VIDEO_PLAYER_ICON_URL}" alt="Video" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;" onload="onImageLoaded(this)" crossorigin="anonymous"></img>`;
+        } else if (animatedAds.length > 0) {
+          return `<img src="${ICON_URL_CODE_OUTLINE}" alt="Video" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;" onload="onImageLoaded(this)" crossorigin="anonymous"></img>`;
+        }
       }
-
-      if (row[FIELD_AD_NUMBER].endsWith("A")) {
-          return `<img src="${ICON_URL_CODE_OUTLINE}" alt="Video" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
-      }
-
-      if (
-          datoRows != null &&
-          datoRows.length > 0 &&
-          BID_STRATEGY_FOR_PAID_SEARCH.includes(datoRows[0][FIELD_BID_STRATEGY_H])
-      ) {
-          return `<img src="${SEARCH_AD_ICON_URL}" alt="Error" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
-      }
-
-      if (adKey in adLinks) {
-          const ads = filterBestFitAds(adLinks[adKey]);
-          if (ads.length > 0) {
-              const imageAds = ads.filter((a) => a.mimeType.startsWith("image/", 0));
-              const videoAds = ads.filter((a) => a.mimeType.startsWith("video/", 0));
-              const animatedAds = ads.filter((a) =>
-                  a.mimeType.startsWith("text/html", 0)
-              );
-
-              if (imageAds.length > 0) {
-                  return `<img src="${imageAds[0].url}" alt="${imageAds[0].adFileName}" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: cover;"></img>`;
-              } else if (videoAds.length > 0) {
-                  return `<img src="${VIDEO_PLAYER_ICON_URL}" alt="Video" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
-              } else if (animatedAds.length > 0) {
-                  return `<img src="${ICON_URL_CODE_OUTLINE}" alt="Video" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
-              }
-          }
-      }
-      return `<img src="${ALERT_ICON_URL}" alt="Error" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"></img>`;
+    }
+    return `<img src="${ALERT_ICON_URL}" alt="Error" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;" onload="onImageLoaded(this)" crossorigin="anonymous"></img>`;
   },
 };
 
@@ -166,7 +207,7 @@ const FIELD_DATA_FORMATTER = {
   [FIELD_CTR]: (val) => percentageFormatter(val, 2),
   [FIELD_GA_RAIN_EVENTS]: numberWithCommas,
   [FIELD_CONV_RATE]: (val) => percentageFormatter(val, 1),
-  [FIELD_RAIN_PERFORMANCE_SCORE]: (val) => percentageFormatter(val, 2)
+  [FIELD_RAIN_PERFORMANCE_SCORE]: (val) => percentageFormatter(val, 2),
 };
 
 const DIMENSIONS_TO_DISPLAY = [
@@ -182,7 +223,7 @@ const MEASUREMENTS_TO_DISPLAY = [
   FIELD_CTR,
   FIELD_GA_RAIN_EVENTS,
   FIELD_CONV_RATE,
-  FIELD_RAIN_PERFORMANCE_SCORE
+  FIELD_RAIN_PERFORMANCE_SCORE,
 ];
 
 const DATO_TO_API_DATA_FUSION = {
@@ -205,31 +246,73 @@ const LOADER_HTML_WITH_CLASS = (klass) => {
 `;
 };
 
+const FLOATING_DOWNLOAD_BUTTON = (href, fileName) => {
+  return `
+  <div id="downloadButtonContainer" style="position: fixed; right:7%; bottom:0; z-index: 9999;">
+    <a 
+      id="downloadLink" 
+      style="display: block; text-decoration: underline; font-size: 14px; font-weight: bold;" 
+      href="${href}" 
+      download="${fileName}">
+      Export PDF
+    </a>
+    <div style="font-size: 11px; color: #555; font-style: italic;">
+      <p style="margin: 2px 0;">1. Right-click the button above</p>
+      <p style="margin: 2px 0;">2. 'Open Link in New Tab' or 'Save Link As...'</p>
+    </div>
+  </div>
+  `;
+};
+
+const RAIN_LOGO_URL = `https://cdn1.rainlocal.com/asset/icon/generic/rain-logo-blue-no-name.png`;
+
+const RAIN_LOGO_ELEMENT = `
+  <img src="${RAIN_LOGO_URL}" crossorigin="anonymous" style="display: hidden;" onload="onImageLoaded(this)"></img>`;
+
 const LOADER_HTML = LOADER_HTML_WITH_CLASS("loading");
+const HIDDEN_CANVAS_ELEMENT = `<canvas id="myCanvas" style="display: none;"></canvas>`;
 
 let activeSwiper = null;
 let activeVideoPlayer = null;
 
+const imagesToBase64 = {};
+
 function divide(num, den) {
   try {
-      if (den == 0) {
-          return 0;
-      }
-      return num / den
-  } catch (err) {
+    if (den == 0) {
       return 0;
+    }
+    return num / den;
+  } catch (err) {
+    return 0;
   }
+}
+function onImageLoaded(imgElement) {
+  if (imagesToBase64.hasOwnProperty(imgElement.src)) {
+    return;
+  }
+
+  const canvas = document.getElementById("myCanvas");
+  const ctx = canvas.getContext("2d");
+  canvas.width = imgElement.naturalWidth;
+  canvas.height = imgElement.naturalHeight;
+  ctx.drawImage(imgElement, 0, 0);
+  const base64String = canvas.toDataURL("image/png");
+  imagesToBase64[imgElement.src] = base64String;
 }
 
 async function onLoad($) {
+  $("body").append(HIDDEN_CANVAS_ELEMENT);
+  $("body").append(RAIN_LOGO_ELEMENT);
+
   $("#creativeImageGallery").css("height", `${getHtmlHeight() - 50}px`);
   $("#creativeTableContainer").html(LOADER_HTML);
   $("#creativeImageGallery").html(LOADER_HTML);
 
   $("body").on("load", "[role=animatedAdsPlayer]", function () {
-      console.log("Animated ads is loaded completely!");
-      $("[role=animatedAdsPlayer]").show();
-      $(".animatedAdsLoader").hide();
+    // console.log("Animated ads is loaded completely!");
+    $("[role=animatedAdsPlayer]").show();
+    $(".animatedAdsLoader").hide();
   });
 
   const result = DA.query.getQueryResult();
@@ -237,88 +320,121 @@ async function onLoad($) {
 
   const adsLink = await fetchAdLinks(datoFieldIndex, result); //aggregation key to [ads links details]
   Object.keys(adsLink).forEach((key) => {
-      let lArray = adsLink[key];
-      lArray = lArray.filter(
-          (al) =>
-              al.mimeType.startsWith("image/") ||
-              al.mimeType.startsWith("video/") ||
-              al.mimeType.startsWith("text/html")
-      );
-      if (lArray.length > 0) {
-          adsLink[key] = lArray;
-      } else {
-          delete adsLink[key];
-      }
+    let lArray = adsLink[key];
+    lArray = lArray.filter(
+      (al) =>
+        al.mimeType.startsWith("image/") ||
+        al.mimeType.startsWith("video/") ||
+        al.mimeType.startsWith("text/html")
+    );
+    if (lArray.length > 0) {
+      adsLink[key] = lArray;
+    } else {
+      delete adsLink[key];
+    }
   });
 
-  const aggregatedData = aggregateResults(datoFieldIndex, result, adsLink); //rows, total, rowsByKey
-  drawTableForAggregatedData(datoFieldIndex, aggregatedData);
+  const objectRows = convertDatoResultToObjects(
+    datoFieldIndex,
+    result,
+    adsLink
+  );
+  const objectRowsGroupedByCampaignName = objectRows.reduce((group, row) => {
+    const name = row[FIELD_CAMPAIGN_NAME_H];
+    if (name === null) {
+      return group;
+    }
+
+    if (!group[name]) {
+      group[name] = [];
+    }
+    group[name].push({ ...row });
+    return group;
+  }, {});
+
+  // const aggregatedData = aggregateResults(datoFieldIndex, result, adsLink); //rows, total, rowsByKey
+  const aggregatedData = aggregateRows(datoFieldIndex, objectRows, adsLink); //rows, total, rowsByKey
+
+  var sortedAggTable = drawTableForAggregatedData(
+    datoFieldIndex,
+    aggregatedData,
+    objectRowsGroupedByCampaignName,
+    adsLink
+  );
 
   $("body").on("click", "[role=adrow]", function (event) {
-      const key = $(this).data("key");
-      $("#creativeImageGallery").html(LOADER_HTML);
-      setTimeout(() => onAdNumberClicked(key, adsLink), 700);
+    const key = $(this).data("key");
+    $("#creativeImageGallery").html(LOADER_HTML);
+    setTimeout(() => onAdNumberClicked(key, adsLink), 700);
   });
 
+  generatePdf(
+    objectRowsGroupedByCampaignName,
+    datoFieldIndex,
+    adsLink,
+    sortedAggTable.columnName,
+    sortedAggTable.direction
+  );
+
   if (aggregatedData.rows.length > 0) {
-      const key = $("tbody").find("tr[role=adrow]:first").data("key");
-      $("#creativeImageGallery").html(LOADER_HTML);
-      setTimeout(() => onAdNumberClicked(key, adsLink), 700);
+    const key = $("tbody").find("tr[role=adrow]:first").data("key");
+    $("#creativeImageGallery").html(LOADER_HTML);
+    setTimeout(() => onAdNumberClicked(key, adsLink), 700);
   } else {
-      hideImageCarousal();
+    hideImageCarousal();
   }
 }
 
 function findSupernovaAuthToken(datoFieldIndex, result) {
   try {
-      const ai = datoFieldIndex.dimensions[FIELD_X_AUTH_TOKEN];
-      return result.rows[0][ai].value;
+    const ai = datoFieldIndex.dimensions[FIELD_X_AUTH_TOKEN];
+    return result.rows[0][ai].value;
   } catch (err) {
-      return "";
+    return "";
   }
 }
 
 async function fetchAdLinks(datoFieldIndex, result) {
   const uniqueCampaignNumbers = findUniqueCampaignNumbersAndAdNumbers(
-      datoFieldIndex,
-      result
+    datoFieldIndex,
+    result
   );
 
   const authToken = findSupernovaAuthToken(datoFieldIndex, result);
   let adsLinkData = {};
 
   try {
-      adsLinkData = await $.ajax({
-          method: "POST",
-          url: API_ENDPOINT,
-          headers: { "X-AuthToken": authToken, "Content-Type": "application/json" },
-          data: JSON.stringify(uniqueCampaignNumbers),
-      });
+    adsLinkData = await $.ajax({
+      method: "POST",
+      url: API_ENDPOINT,
+      headers: { "X-AuthToken": authToken, "Content-Type": "application/json" },
+      data: JSON.stringify(uniqueCampaignNumbers),
+    });
   } catch (err) {
-      console.log(err);
-      adsLinkData = {};
+    console.log(err);
+    adsLinkData = {};
   }
 
   const linksByKey = {};
   const creativeDetailsByKey = {};
 
   Object.entries(adsLinkData).forEach(([adNumber, rows]) => {
-      rows.forEach((row) => {
-          applyAdditionalAdInformation(row);
-          const aggregationKey = getAdLinkAggregationKey(datoFieldIndex, row);
+    rows.forEach((row) => {
+      applyAdditionalAdInformation(row);
+      const aggregationKey = getAdLinkAggregationKey(datoFieldIndex, row);
 
-          if (!(aggregationKey in linksByKey)) {
-              linksByKey[aggregationKey] = [];
-          }
-          if (!(aggregationKey in creativeDetailsByKey)) {
-              creativeDetailsByKey[aggregationKey] = [];
-          }
+      if (!(aggregationKey in linksByKey)) {
+        linksByKey[aggregationKey] = [];
+      }
+      if (!(aggregationKey in creativeDetailsByKey)) {
+        creativeDetailsByKey[aggregationKey] = [];
+      }
 
-          if (!linksByKey[aggregationKey].includes(row.url)) {
-              linksByKey[aggregationKey].push(row.url);
-              creativeDetailsByKey[aggregationKey].push(row);
-          }
-      });
+      if (!linksByKey[aggregationKey].includes(row.url)) {
+        linksByKey[aggregationKey].push(row.url);
+        creativeDetailsByKey[aggregationKey].push(row);
+      }
+    });
   });
   return creativeDetailsByKey;
 }
@@ -332,35 +448,35 @@ function filterBestFitAds(adsDetails) {
   let bestFitRatioDelta = Number.MAX_VALUE;
 
   adsDetails.forEach((ad) => {
-      try {
-          const adSize = ad.adSize.split("x");
-          const width = parseFloat(adSize[0]);
-          const height = parseFloat(adSize[1]);
-          const wbyh = width / height;
+    try {
+      const adSize = ad.adSize.split("x");
+      const width = parseFloat(adSize[0]);
+      const height = parseFloat(adSize[1]);
+      const wbyh = width / height;
 
-          const delta = Math.abs(widthByHeightRatio - wbyh);
-          if (bestFitRatioDelta > delta) {
-              bestFitRatioDelta = delta;
-          }
-
-          if (!(delta in fitRatioDeltaToAdDetails)) {
-              fitRatioDeltaToAdDetails[delta] = [];
-          }
-          fitRatioDeltaToAdDetails[delta].push(ad);
-      } catch (err) {
-          console.log(err);
+      const delta = Math.abs(widthByHeightRatio - wbyh);
+      if (bestFitRatioDelta > delta) {
+        bestFitRatioDelta = delta;
       }
+
+      if (!(delta in fitRatioDeltaToAdDetails)) {
+        fitRatioDeltaToAdDetails[delta] = [];
+      }
+      fitRatioDeltaToAdDetails[delta].push(ad);
+    } catch (err) {
+      console.log(err);
+    }
   });
 
   if (bestFitRatioDelta in fitRatioDeltaToAdDetails) {
-      return fitRatioDeltaToAdDetails[bestFitRatioDelta];
+    return fitRatioDeltaToAdDetails[bestFitRatioDelta];
   }
   return adsDetails;
 }
 
 function hideImageCarousal() {
   if (activeSwiper != null) {
-      activeSwiper.destroy();
+    activeSwiper.destroy();
   }
 
   $("#creativeImageGallery").hide();
@@ -369,127 +485,129 @@ function hideImageCarousal() {
 
 function onAdNumberClicked(key, adsLink) {
   if (activeSwiper != null) {
-      activeSwiper.destroy();
+    activeSwiper.destroy();
   }
 
   if (activeVideoPlayer != null) {
   }
 
   if (!(key in adsLink)) {
-      let html = `<div class="alertMessage">`;
-      html += `<div class="">`;
-      html += `<img loading="lazy" class="alignleft" src="https://cdn1.rainlocal.com/asset/scripts/datorama/widgets/creative-performance/alert-icon.svg" width="80" height="80"></img>`;
-      html += `<br><p>No creative content available for selected ad!<p>`;
-      html += `</div>`;
-      html += `</div>`;
+    let html = `<div class="alertMessage">`;
+    html += `<div class="">`;
+    html += `<img loading="lazy" class="alignleft" src="https://cdn1.rainlocal.com/asset/scripts/datorama/widgets/creative-performance/alert-icon.svg" width="80" height="80"></img>`;
+    html += `<br><p>No creative content available for selected ad!<p>`;
+    html += `</div>`;
+    html += `</div>`;
 
-      $("#creativeImageGallery").html(html);
-      const maxHeight = getHtmlHeight();
+    $("#creativeImageGallery").html(html);
+    const maxHeight = getHtmlHeight();
 
-      $(".alertMessage").css("height", `${maxHeight / 2}px`);
+    $(".alertMessage").css("height", `${maxHeight / 2}px`);
   } else {
-      const maxHeight = getHtmlHeight();
-      let ads = adsLink[key];
-      ads = filterBestFitAds(ads);
+    const maxHeight = getHtmlHeight();
+    let ads = adsLink[key];
+    ads = filterBestFitAds(ads);
 
-      let html = `<div class="swiper mySwiper">`;
-      html += `<div class="swiper-wrapper">`;
-      ads.forEach((ad) => {
-          if (ad.mimeType.startsWith("image/")) {
-              html += `<div class="swiper-slide"><img src=${ad.url}></img></div>`;
-          } else if (ad.mimeType.startsWith("video/", 0)) {
-              html += `<div class="swiper-slide">`;
-              html += `<video class="video-js" controls preload="auto" width="${$("#creativeImageGallery").width() - 30
-                  }" height="${$("#creativeImageGallery").height() - 30
-                  }" data-setup="{}">`;
-              html += `<source src="${ad.url}" type="${ad.mimeType}"/>`;
-              html += `</video>`;
-              html += `</div>`;
-          } else if (ad.mimeType.startsWith("text/html")) {
-              const baseUrl = ad.url;
-              const frameWidth = $("#creativeImageGallery").width();
-              const frameHeight = $("#creativeImageGallery").height();
-              let adWidth = getWidth(ad.adSize);
-              if (adWidth < 10) {
-                  adWidth = frameHeight;
-              }
-              adWidth += 10;
+    let html = `<div class="swiper mySwiper">`;
+    html += `<div class="swiper-wrapper">`;
+    ads.forEach((ad) => {
+      if (ad.mimeType.startsWith("image/")) {
+        html += `<div class="swiper-slide"><img src=${ad.url}></img></div>`;
+      } else if (ad.mimeType.startsWith("video/", 0)) {
+        html += `<div class="swiper-slide">`;
+        html += `<video class="video-js" controls preload="auto" width="${
+          $("#creativeImageGallery").width() - 30
+        }" height="${
+          $("#creativeImageGallery").height() - 30
+        }" data-setup="{}">`;
+        html += `<source src="${ad.url}" type="${ad.mimeType}"/>`;
+        html += `</video>`;
+        html += `</div>`;
+      } else if (ad.mimeType.startsWith("text/html")) {
+        const baseUrl = ad.url;
+        const frameWidth = $("#creativeImageGallery").width();
+        const frameHeight = $("#creativeImageGallery").height();
+        let adWidth = getWidth(ad.adSize);
+        if (adWidth < 10) {
+          adWidth = frameHeight;
+        }
+        adWidth += 10;
 
-              let adHeight = getHeight(ad.adSize);
-              if (adHeight < 10) {
-                  adHeight = frameHeight;
-              }
-              adHeight += 10;
+        let adHeight = getHeight(ad.adSize);
+        if (adHeight < 10) {
+          adHeight = frameHeight;
+        }
+        adHeight += 10;
 
-              const wScale = frameWidth / adWidth;
-              const hScale = frameHeight / adHeight;
+        const wScale = frameWidth / adWidth;
+        const hScale = frameHeight / adHeight;
 
-              let rScale = wScale;
-              if (hScale < wScale) {
-                  rScale = hScale;
-              }
-              rScale *= 0.95;
+        let rScale = wScale;
+        if (hScale < wScale) {
+          rScale = hScale;
+        }
+        rScale *= 0.95;
 
-              html += LOADER_HTML_WITH_CLASS("animatedAdsLoader");
-              html += `<iframe role="animatedAdsPlayer" src="${baseUrl}" width="${adWidth}" height="${adHeight}" style="border: 0; transform: scale(${rScale});">`;
-              html += `</iframe>`;
-          }
-      });
-      html += "</div>";
-      html += `<div class="swiper-pagination"></div>`;
-      html += `</div>`;
+        html += LOADER_HTML_WITH_CLASS("animatedAdsLoader");
+        html += `<iframe role="animatedAdsPlayer" src="${baseUrl}" width="${adWidth}" height="${adHeight}" style="border: 0; transform: scale(${rScale});">`;
+        html += `</iframe>`;
+      }
+    });
+    html += "</div>";
+    html += `<div class="swiper-pagination"></div>`;
+    html += `</div>`;
 
-      $("#creativeImageGallery").html(html);
-      $("[role=animatedAdsPlayer]").hide();
+    $("#creativeImageGallery").html(html);
+    $("[role=animatedAdsPlayer]").hide();
 
-      setTimeout(() => {
-          $("[role=animatedAdsPlayer]").show();
-          $(".animatedAdsLoader").hide();
-          document.querySelector("[role=animatedAdsPlayer]");
-      }, 2000);
+    setTimeout(() => {
+      $("[role=animatedAdsPlayer]").show();
+      $(".animatedAdsLoader").hide();
+      document.querySelector("[role=animatedAdsPlayer]");
+    }, 2000);
 
-      activeSwiper = new Swiper(".mySwiper", {
-          effect: "coverflow",
-          grabCursor: true,
-          centeredSlides: true,
-          slidesPerView: "auto",
-          coverflowEffect: {
-              rotate: 50,
-              stretch: 0,
-              depth: 100,
-              modifier: 1,
-              slideShadows: true,
-          },
-          pagination: {
-              el: ".swiper-pagination",
-              clickable: true,
-          },
-      });
+    activeSwiper = new Swiper(".mySwiper", {
+      effect: "coverflow",
+      grabCursor: true,
+      centeredSlides: true,
+      slidesPerView: "auto",
+      coverflowEffect: {
+        rotate: 50,
+        stretch: 0,
+        depth: 100,
+        modifier: 1,
+        slideShadows: true,
+      },
+      pagination: {
+        el: ".swiper-pagination",
+        clickable: true,
+      },
+    });
   }
 
   $("tr[role=adrow].selectedRow").removeClass("selectedRow");
   $(`tr[role=adrow]`).each((i, obj) => {
-      const tKey = $(obj).data("key");
-      if (key == tKey) {
-          $(obj).addClass("selectedRow");
-      }
+    const tKey = $(obj).data("key");
+    if (key == tKey) {
+      $(obj).addClass("selectedRow");
+    }
   });
   $("#creativeImageGallery").show();
 }
 
 function getHeight(size) {
   try {
-      return parseFloat(size.split("x")[1].replace(/\D/g, ""));
+    return parseFloat(size.split("x")[1].replace(/\D/g, ""));
   } catch (err) {
-      return 0;
+    return 0;
   }
 }
 
 function getWidth(size) {
   try {
-      return parseFloat(size.split("x")[0].replace(/\D/g, ""));
+    return parseFloat(size.split("x")[0].replace(/\D/g, ""));
   } catch (err) {
-      return 0;
+    return 0;
   }
 }
 
@@ -510,11 +628,11 @@ function getAdLinkAggregationKey(datoFieldIndex, adDetailsRow) {
 
   let key = "";
   dimensionsFields.forEach((field) => {
-      let value = adDetailsRow[DATO_TO_API_DATA_FUSION[field]];
-      if (value == undefined || value == null) {
-          value = "";
-      }
-      key += "|" + value.replace("|", "||");
+    let value = adDetailsRow[DATO_TO_API_DATA_FUSION[field]];
+    if (value == undefined || value == null) {
+      value = "";
+    }
+    key += "|" + value.replace("|", "||");
   });
   return encodeURIComponent(key);
 }
@@ -526,20 +644,20 @@ function findUniqueCampaignNumbersAndAdNumbers(datoFieldIndex, result) {
   const adNumberIndex = datoFieldIndex.dimensions[FIELD_AD_NUMBER];
 
   result.rows.forEach((row) => {
-      const campaignNumberH = row[cnIndex].value;
-      const campaignNumber = campaignNumberH.replace(/\D/g, "");
+    const campaignNumberH = row[cnIndex].value;
+    const campaignNumber = campaignNumberH.replace(/\D/g, "");
 
-      const impressions = parseMeasurement(row[impressionIndex].value);
+    const impressions = parseMeasurement(row[impressionIndex].value);
 
-      const adNumber = row[adNumberIndex].value;
+    const adNumber = row[adNumberIndex].value;
 
-      if (!isNaN(campaignNumber) && impressions > 0) {
-          if (!campaignNumbers.hasOwnProperty(campaignNumber)) {
-              campaignNumbers[campaignNumber] = [];
-          }
-
-          campaignNumbers[campaignNumber].push(adNumber);
+    if (!isNaN(campaignNumber) && impressions > 0) {
+      if (!campaignNumbers.hasOwnProperty(campaignNumber)) {
+        campaignNumbers[campaignNumber] = [];
       }
+
+      campaignNumbers[campaignNumber].push(adNumber);
+    }
   });
 
   return campaignNumbers;
@@ -552,18 +670,18 @@ function findUniqueCampaignNumbers(datoFieldIndex, result) {
   const impressionIndex = datoFieldIndex.measurements[FIELD_IMPRESSIONS];
 
   result.rows.forEach((row) => {
-      const campaignNameH = row[campaignNameHIndex].value;
-      const impressions = parseMeasurement(row[impressionIndex].value);
+    const campaignNameH = row[campaignNameHIndex].value;
+    const impressions = parseMeasurement(row[impressionIndex].value);
 
-      const campaignNumberH = row[cnIndex].value;
-      const campaignNumber = campaignNumberH.replace(/\D/g, "");
-      if (
-          !isNaN(campaignNumber) &&
-          !campaignNumbers.includes(campaignNumber) &&
-          impressions > 0
-      ) {
-          campaignNumbers.push(campaignNumber);
-      }
+    const campaignNumberH = row[cnIndex].value;
+    const campaignNumber = campaignNumberH.replace(/\D/g, "");
+    if (
+      !isNaN(campaignNumber) &&
+      !campaignNumbers.includes(campaignNumber) &&
+      impressions > 0
+    ) {
+      campaignNumbers.push(campaignNumber);
+    }
   });
   return campaignNumbers;
 }
@@ -574,7 +692,7 @@ function defaultFormatter(value) {
 
 function percentageFormatter(value, decplac) {
   if (value == null || value == "" || isNaN(value) || !isFinite(value))
-      return parseFloat(0).toFixed(decplac) + "%";
+    return parseFloat(0).toFixed(decplac) + "%";
   else return parseFloat(value).toFixed(decplac) + "%";
 }
 
@@ -583,17 +701,71 @@ function numberWithCommas(x) {
   return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
-function drawTableForAggregatedData(datoFieldIndex, aggregatedData) {
+function drawTableForAggregatedData(
+  datoFieldIndex,
+  aggregatedData,
+  objectRowsGroupedByCampaignName,
+  adsLink
+) {
   let allFields = getFieldsOrderToDisplay(datoFieldIndex);
-
   const html = buildHtmlTable(allFields, aggregatedData);
   $("#creativeTableContainer").html(html);
+
   const table = $("#creativeTable").DataTable({
-      scrollY: getHtmlHeight() - 120 + "px",
-      scrollCollapse: true,
-      paging: false,
-      order: [[datoFieldIndex.measurements.hasOwnProperty(FIELD_RAIN_PERFORMANCE_SCORE)?7:1,datoFieldIndex.measurements.hasOwnProperty(FIELD_RAIN_PERFORMANCE_SCORE)? "desc":"asc"]],
+    scrollY: getHtmlHeight() - 120 + "px",
+    scrollCollapse: true,
+    paging: false,
+    order: [
+      [
+        datoFieldIndex.measurements.hasOwnProperty(FIELD_RAIN_PERFORMANCE_SCORE)
+          ? 7
+          : 1,
+        datoFieldIndex.measurements.hasOwnProperty(FIELD_RAIN_PERFORMANCE_SCORE)
+          ? "desc"
+          : "asc",
+      ],
+    ],
   });
+
+  let currentSortingDetails = {
+    columnName: allFields[1], // Default column name (based on initial order)
+    direction: "asc", // Default direction
+  };
+
+  // Capture sorting details on sort
+  table.on("order.dt", function () {
+    const order = table.order(); // Get the current sorting details (array of [columnIndex, direction])
+    if (order.length > 0) {
+      const [columnIndex, direction] = order[0]; // Get the first column being sorted
+      currentSortingDetails = {
+        columnName: allFields[columnIndex], // Map index to the field name
+        columnIndex: columnIndex,
+        direction: direction, // 'asc' or 'desc'
+      };
+
+      // console.log("Sorting Column:", currentSortingDetails.columnName);
+      // console.log("Direction:", currentSortingDetails.direction);
+    }
+    const downloadButton = document.getElementById("downloadLink");
+    if (downloadButton != null) {
+      downloadButton.remove();
+    }
+    debounce(
+      "generatePdf",
+      () => {
+        generatePdf(
+          objectRowsGroupedByCampaignName,
+          datoFieldIndex,
+          adsLink,
+          currentSortingDetails.columnName,
+          currentSortingDetails.direction
+        );
+      },
+      1000
+    );
+  });
+
+  return currentSortingDetails; // Return the sorting details
 }
 
 function getFieldsOrderToDisplay(datoFieldIndex) {
@@ -601,85 +773,117 @@ function getFieldsOrderToDisplay(datoFieldIndex) {
   const existingDimensions = Object.keys(datoFieldIndex.dimensions);
 
   allFields = allFields.filter(
-      (f) => existingDimensions.includes(f) || f == FIELD_AD_THUMBNAIL
+    (f) => existingDimensions.includes(f) || f == FIELD_AD_THUMBNAIL
   );
 
   existingDimensions
-      .filter((f) => !AGGREGATION_SKIP_DIMENSIONS.includes(f))
-      .forEach((f) => {
-          if (!allFields.includes(f)) {
-              allFields.push(f);
-          }
-      });
+    .filter((f) => !AGGREGATION_SKIP_DIMENSIONS.includes(f))
+    .forEach((f) => {
+      if (!allFields.includes(f)) {
+        allFields.push(f);
+      }
+    });
 
   MEASUREMENTS_TO_DISPLAY.forEach((m) => {
-      if (m == FIELD_RAIN_PERFORMANCE_SCORE) {
-          if (datoFieldIndex.hasOwnProperty(FIELD_RAIN_PERFORMANCE_SCORE)) {
-              allFields.push(m);
-          }
-      } else {
-          allFields.push(m);
+    if (m == FIELD_RAIN_PERFORMANCE_SCORE) {
+      if (datoFieldIndex.hasOwnProperty(FIELD_RAIN_PERFORMANCE_SCORE)) {
+        allFields.push(m);
       }
-
+    } else {
+      allFields.push(m);
+    }
   });
 
   Object.keys(datoFieldIndex.measurements).forEach((f) => {
-      if (!allFields.includes(f) && f !== FIELD_CLICKS_RI) {
-          allFields.push(f);
-      }
+    if (!allFields.includes(f) && f !== FIELD_CLICKS_RI) {
+      allFields.push(f);
+    }
   });
 
   return allFields;
 }
 
-function buildHtmlTable(allFields, aggregatedData) {
+function buildHtmlTable(allFields, aggregatedData, buildByKey = true) {
   let html =
-      '<table id="creativeTable" class="stripe row-border order-column nowrap" style="width: 100%;">';
+    '<table id="creativeTable" class="stripe row-border order-column nowrap" style="width: 100%;">';
   {
-      html += `<thead><tr>`;
-      allFields.forEach((field) => {
-          html += `<th>${field}</th>`;
-      });
+    html += `<thead><tr>`;
+    allFields.forEach((field) => {
+      html += `<th>${field}</th>`;
+    });
   }
   {
-      html += "<tbody>";
+    html += "<tbody>";
 
-      Object.entries(aggregatedData.rowsByKey).forEach(([key, row]) => {
-          html += `<tr data-key="${key}" role="adrow">`;
+    const rows = buildByKey
+      ? Object.entries(aggregatedData.rowsByKey).map(([key, row]) => ({
+          key,
+          row,
+        }))
+      : aggregatedData.rows.map((row) => ({ key: null, row }));
 
-          allFields.forEach((field) => {
-              const value = row[field];
+    rows.forEach(({ key, row }) => {
+      html += `<tr ${key ? `data-key="${key}"` : ""} role="adrow">`;
 
-              let formattedValue = value;
-              if (field in FIELD_DATA_FORMATTER) {
-                  formattedValue = FIELD_DATA_FORMATTER[field](formattedValue);
-              } else {
-                  formattedValue = defaultFormatter(formattedValue);
-              }
-              if (field === FIELD_AD_NUMBER) {
-                  html += `<td data-key="${key}" role="adnumber">${formattedValue}</td>`;
-              } else {
-                  html += `<td>${formattedValue}</td>`;
-              }
-          });
-          html += `</tr>`;
-      });
-
-      html += "</tbody>";
-  }
-  {
-      html += "<tfoot><tr>";
       allFields.forEach((field) => {
-          const value = aggregatedData.total[field];
-          let formattedValue = value;
-          if (field in FIELD_DATA_FORMATTER) {
-              formattedValue = FIELD_DATA_FORMATTER[field](formattedValue);
-          } else {
-              formattedValue = defaultFormatter(formattedValue);
-          }
+        const value = row[field];
+        let formattedValue = value;
+
+        if (field in FIELD_DATA_FORMATTER) {
+          formattedValue = FIELD_DATA_FORMATTER[field](formattedValue);
+        } else {
+          formattedValue = defaultFormatter(formattedValue);
+        }
+
+        if (field === FIELD_AD_NUMBER) {
+          html += `<td ${
+            key ? `data-key="${key}"` : ""
+          } role="adnumber">${formattedValue}</td>`;
+        } else {
           html += `<td>${formattedValue}</td>`;
+        }
       });
-      html += "</tr><tfoot>";
+
+      html += `</tr>`;
+    });
+
+    // Object.entries(aggregatedData.rowsByKey).forEach(([key, row]) => {
+    //   html += `<tr data-key="${key}" role="adrow">`;
+
+    //   allFields.forEach((field) => {
+    //     const value = row[field];
+
+    //     let formattedValue = value;
+    //     if (field in FIELD_DATA_FORMATTER) {
+    //       formattedValue = FIELD_DATA_FORMATTER[field](formattedValue);
+    //     } else {
+    //       formattedValue = defaultFormatter(formattedValue);
+    //     }
+    //     if (field === FIELD_AD_NUMBER) {
+    //       html += `<td data-key="${key}" role="adnumber">${formattedValue}</td>`;
+    //     } else {
+    //       html += `<td>${formattedValue}</td>`;
+    //     }
+    //   });
+    //   html += `</tr>`;
+    // });
+
+    html += "</tbody>";
+  }
+
+  {
+    html += "<tfoot><tr>";
+    allFields.forEach((field) => {
+      const value = aggregatedData.total[field];
+      let formattedValue = value;
+      if (field in FIELD_DATA_FORMATTER) {
+        formattedValue = FIELD_DATA_FORMATTER[field](formattedValue);
+      } else {
+        formattedValue = defaultFormatter(formattedValue);
+      }
+      html += `<td>${formattedValue}</td>`;
+    });
+    html += "</tr><tfoot>";
   }
   html += `</tr></thead>`;
   html += `</table>`;
@@ -688,31 +892,31 @@ function buildHtmlTable(allFields, aggregatedData) {
 
 function parseMeasurement(value) {
   if (value == null || value == "" || isNaN(value) || !isFinite(value))
-      return 0;
+    return 0;
   return parseFloat(value);
 }
 
 function applyUnattributedLogic(key, datoFieldIndex, row, adsLink) {
   const dimensions = Object.keys(datoFieldIndex.dimensions);
   const fieldsForUnttributed = [
-      FIELD_AD_NUMBER,
-      FIELD_AD_TYPE,
-      FIELD_AD_CONTENT,
-      FIELD_AD_SIZE,
+    FIELD_AD_NUMBER,
+    FIELD_AD_TYPE,
+    FIELD_AD_CONTENT,
+    FIELD_AD_SIZE,
   ];
   if (row[FIELD_AD_NUMBER] == "Unattributed") {
-      fieldsForUnttributed.forEach((f) => {
-          if (dimensions.includes(f)) {
-              row[f] = "Unattributed";
-          }
-      });
+    fieldsForUnttributed.forEach((f) => {
+      if (dimensions.includes(f)) {
+        row[f] = "Unattributed";
+      }
+    });
   }
   if (!(key in adsLink) && row[FIELD_IMPRESSIONS] == 0) {
-      fieldsForUnttributed.forEach((f) => {
-          if (dimensions.includes(f)) {
-              row[f] = "Unattributed";
-          }
-      });
+    fieldsForUnttributed.forEach((f) => {
+      if (dimensions.includes(f)) {
+        row[f] = "Unattributed";
+      }
+    });
   }
 }
 
@@ -727,54 +931,54 @@ function aggregateRows(datoFieldIndex, rows, adsLink) {
   const aggregatedRowObjects = {};
 
   rows.forEach((row) => {
-      let key = getAggregationKey(datoFieldIndex, row);
-      applyUnattributedLogic(key, datoFieldIndex, row, adsLink);
-      key = getAggregationKey(datoFieldIndex, row);
-      if (!(key in aggregationByKey)) {
-          aggregationByKey[key] = row;
-          aggregatedRowObjects[key] = [];
-          aggregatedRowObjects[key].push({ ...row });
-      } else {
-          Object.keys(datoFieldIndex.measurements).forEach((measurement) => {
-              aggregationByKey[key][measurement] += row[measurement];
-          });
-          aggregatedRowObjects[key].push({ ...row });
-      }
+    let key = getAggregationKey(datoFieldIndex, row);
+    applyUnattributedLogic(key, datoFieldIndex, row, adsLink);
+    key = getAggregationKey(datoFieldIndex, row);
+    if (!(key in aggregationByKey)) {
+      aggregationByKey[key] = row;
+      aggregatedRowObjects[key] = [];
+      aggregatedRowObjects[key].push({ ...row });
+    } else {
+      Object.keys(datoFieldIndex.measurements).forEach((measurement) => {
+        aggregationByKey[key][measurement] += row[measurement];
+      });
+      aggregatedRowObjects[key].push({ ...row });
+    }
   });
   const total = {};
   Object.keys(datoFieldIndex.measurements).forEach((measurement) => {
-      total[measurement] = 0;
+    total[measurement] = 0;
   });
 
   Object.keys(datoFieldIndex.dimensions).forEach((dim, index) => {
-      if (!AGGREGATION_SKIP_DIMENSIONS.includes(dim)) {
-          total[dim] = "";
-      }
+    if (!AGGREGATION_SKIP_DIMENSIONS.includes(dim)) {
+      total[dim] = "";
+    }
   });
 
   const aggregatedRows = Object.entries(aggregationByKey).map(([key, row]) => {
-      const newRow = row;
-      AGGREGATION_SKIP_DIMENSIONS.forEach((dim, index) => {
-          delete newRow[dim];
-      });
-      Object.keys(datoFieldIndex.measurements).forEach((measurement) => {
-          total[measurement] += newRow[measurement];
-      });
-      Object.entries(CALCULATED_VALUES).forEach(([field, calculator]) => {
-          newRow[field] = calculator(
-              newRow,
-              datoFieldIndex,
-              adsLink,
-              false,
-              aggregatedRowObjects[key],
-              aggregatedRowObjects
-          );
-      });
-      return newRow;
+    const newRow = row;
+    AGGREGATION_SKIP_DIMENSIONS.forEach((dim, index) => {
+      delete newRow[dim];
+    });
+    Object.keys(datoFieldIndex.measurements).forEach((measurement) => {
+      total[measurement] += newRow[measurement];
+    });
+    Object.entries(CALCULATED_VALUES).forEach(([field, calculator]) => {
+      newRow[field] = calculator(
+        newRow,
+        datoFieldIndex,
+        adsLink,
+        false,
+        aggregatedRowObjects[key],
+        aggregatedRowObjects
+      );
+    });
+    return newRow;
   });
 
   Object.entries(CALCULATED_VALUES).forEach(([field, calculator]) => {
-      total[field] = calculator(total, datoFieldIndex, adsLink, true);
+    total[field] = calculator(total, datoFieldIndex, adsLink, true);
   });
 
   return { rows: aggregatedRows, total, rowsByKey: aggregationByKey };
@@ -782,16 +986,16 @@ function aggregateRows(datoFieldIndex, rows, adsLink) {
 
 function getDimensionToAggregateOn(datoFieldIndex) {
   return Object.keys(datoFieldIndex.dimensions).filter(
-      (dimension) => !AGGREGATION_SKIP_DIMENSIONS.includes(dimension)
+    (dimension) => !AGGREGATION_SKIP_DIMENSIONS.includes(dimension)
   );
 }
 
 function getAggregationKey(datoFieldIndex, row) {
   let key = "";
   getDimensionToAggregateOn(datoFieldIndex).forEach((dimension) => {
-      if (!AGGREGATION_SKIP_DIMENSIONS.includes(dimension)) {
-          key += "|" + row[dimension].replace("|", "||");
-      }
+    if (!AGGREGATION_SKIP_DIMENSIONS.includes(dimension)) {
+      key += "|" + row[dimension].replace("|", "||");
+    }
   });
 
   return encodeURIComponent(key);
@@ -802,27 +1006,331 @@ function getFieldsNameToIndex(result) {
   const measurements = {};
 
   result.fields.forEach((field, index) => {
-      if (field.type === "dimension") {
-          dimensions[field.name] = index;
-      } else if (field.type == "metric") {
-          measurements[field.name] = index;
-      }
+    if (field.type === "dimension") {
+      dimensions[field.name] = index;
+    } else if (field.type == "metric") {
+      measurements[field.name] = index;
+    }
   });
   return { dimensions, measurements };
 }
 
 function convertDatoResultToObjects(datoFieldIndex, result, adsLink) {
   const rows = result.rows.map((row) => {
-      const rt = {};
-      Object.entries(datoFieldIndex.dimensions).forEach(([name, index]) => {
-          rt[name] = row[index].value;
-      });
+    const rt = {};
+    Object.entries(datoFieldIndex.dimensions).forEach(([name, index]) => {
+      rt[name] = row[index].value;
+    });
 
-      Object.entries(datoFieldIndex.measurements).forEach(([name, index]) => {
-          rt[name] = parseMeasurement(row[index].value);
-      });
+    Object.entries(datoFieldIndex.measurements).forEach(([name, index]) => {
+      rt[name] = parseMeasurement(row[index].value);
+    });
 
-      return rt;
+    return rt;
   });
   return rows;
+}
+
+function debounce(key, func, timeout) {
+  if (this.debounceIds == null) {
+    this.debounceIds = {};
+  }
+  if (key in this.debounceIds) {
+    clearTimeout(this.debounceIds[key]);
+  }
+  this.debounceIds[key] = setTimeout(() => {
+    func();
+    delete this.debounceIds[key];
+  }, timeout);
+}
+
+function generatePdf(
+  objectRowsGroupedByCampaignName,
+  datoFieldIndex,
+  adsLink,
+  columnName,
+  direction
+) {
+  const query = DA.query.getQuery();
+  setTimeout(() => {
+    try {
+      const doc = new window.jspdf.jsPDF();
+      const startDate = query.date.startDate;
+      const endDate = query.date.endDate;
+      const imageWidth = 12;
+      const imageHeight = 21;
+      const cellPadding = 2;
+
+      const totalCount = Object.keys(objectRowsGroupedByCampaignName).length;
+      let completedCount = 0;
+
+      Object.entries(objectRowsGroupedByCampaignName).forEach(
+        ([key, value]) => {
+          const uniqueName = key;
+          const objRows = value;
+
+          const aggData = aggregateRows(datoFieldIndex, objRows, adsLink); //rows, total, rowsByKey
+          const allFields = getFieldsOrderToDisplay(datoFieldIndex);
+          const sortedRows = dynamicSort(aggData.rows, columnName, direction);
+          aggData.rows = sortedRows;
+
+          const html = buildHtmlTable(allFields, aggData, false);
+          //   console.log(JSON.stringify(html));
+
+          const parser = new DOMParser();
+          const dom = parser.parseFromString(html, "text/html");
+          const tableData = extractTableDataByDOM(dom);
+          const urls = tableData.body.map((row) => row[0]);
+          const promises = urls.map((url) => loadImageAsBase64(url));
+
+          Promise.all(promises)
+            .then((images) => {
+              tableData.body = tableData.body.map((row, index) => {
+                const image = new Image();
+                image.src = images[index].dataURL;
+                row[0] = image;
+                image.calculatedWidth = images[index].width;
+                image.calculatedHeight = images[index].height;
+
+                return row;
+              });
+
+              doc.autoTable({
+                head: tableData.headers,
+                body: tableData.body,
+                foot: tableData.footers,
+                rowPageBreak: "avoid",
+                margin: {
+                  top: 25,
+                },
+                styles: {
+                  valign: "middle",
+                },
+                bodyStyles: {
+                  minCellHeight: imageHeight + 2 * cellPadding,
+                },
+                columnStyles: {
+                  0: {
+                    cellWidth: imageWidth + 2 * cellPadding + 10,
+                  },
+                },
+                didDrawCell: function (data) {
+                  if (data.column.index === 0 && data.cell.section === "body") {
+                    const { raw } = data.cell;
+                    const image = raw;
+                    const originalWidth = raw.calculatedWidth;
+                    const originalHeight = raw.calculatedHeight;
+
+                    // Ensure image is loaded properly
+                    // const originalWidth = image.naturalWidth || image.width;
+                    // const originalHeight = image.naturalHeight || image.height;
+
+                    const aspectRatio = originalWidth / originalHeight;
+                    const cellWidth = imageWidth;
+                    const cellHeight = imageHeight;
+
+                    let adjustedWidth = cellWidth;
+                    let adjustedHeight = cellHeight;
+
+                    // Apply aspect ratio adjustment
+                    if (aspectRatio < 1) {
+                      adjustedWidth = cellHeight * aspectRatio;
+                    } else if (aspectRatio > 1) {
+                      adjustedHeight = cellWidth / aspectRatio;
+                    }
+
+                    const offsetX = (cellWidth - adjustedWidth) / 2;
+                    const offsetY = (cellHeight - adjustedHeight) / 2;
+
+                    // Add image to the PDF with the correct dimensions
+                    doc.addImage(
+                      image.src,
+                      "PNG",
+                      data.cell.x + cellPadding + offsetX,
+                      data.cell.y + cellPadding + offsetY,
+                      adjustedWidth,
+                      adjustedHeight
+                    );
+                  }
+                },
+
+                didDrawPage: function (data) {
+                  const attr =
+                    DA.query.getQuery().filter
+                      .BRAND_DATA_SOURCE_INSTANCE_CUSTOM_ATTRIBUTE1;
+                  let advertiser;
+
+                  if (attr.value.length === 0) {
+                    advertiser = "Multiple Advertiser";
+                  } else {
+                    advertiser = attr.value[0].value;
+                  }
+
+                  const previousColor = doc.getTextColor();
+                  const previousFont = doc.getFontSize();
+
+                  doc.addImage(
+                    imagesToBase64[RAIN_LOGO_URL],
+                    "PNG",
+                    12,
+                    5,
+                    15,
+                    15
+                  );
+                  doc.text(`${advertiser} - ${uniqueName}`, 28, 12);
+                  doc.setTextColor("#4a4a4a");
+                  doc.setFontSize(10);
+                  doc.text(`${startDate} to ${endDate}`, 28, 17);
+                  doc.setFontSize(previousFont);
+                  doc.setTextColor(previousColor);
+                },
+              });
+
+              completedCount++;
+
+              if (completedCount >= totalCount) {
+                console.log("PDF generation completed.");
+
+                const downloadButtonHtml = FLOATING_DOWNLOAD_BUTTON(
+                  "",
+                  "Creative Performance.pdf"
+                );
+                const downloadContainer = new DOMParser().parseFromString(
+                  downloadButtonHtml,
+                  "text/html"
+                ).body.firstChild;
+                const downloadButton =
+                  downloadContainer.querySelector("#downloadLink");
+
+                // Disable pointer events initially
+                downloadButton.style.pointerEvents = "none";
+                document.body.appendChild(downloadContainer);
+
+                // Generate the blob URL for the PDF
+                const blobUrl = doc.output("bloburl");
+                downloadButton.href = blobUrl;
+
+                // Enable pointer events now that the PDF is ready
+                downloadButton.style.pointerEvents = "auto"; // Enable interaction
+              } else if (completedCount < totalCount) {
+                doc.addPage();
+              }
+            })
+            .catch((error) => {
+              console.error("Error processing campaign:", key, error);
+              completedCount++; // Still increment to avoid hanging
+
+              if (completedCount >= totalCount) {
+                console.log("PDF generation completed (with errors).");
+
+                const downloadButtonHtml = FLOATING_DOWNLOAD_BUTTON(
+                  "",
+                  "Creative Performance.pdf"
+                );
+                const downloadContainer = new DOMParser().parseFromString(
+                  downloadButtonHtml,
+                  "text/html"
+                ).body.firstChild;
+                const downloadButton =
+                  downloadContainer.querySelector("#downloadLink");
+
+                // Disable pointer events initially
+                downloadButton.style.pointerEvents = "none";
+                document.body.appendChild(downloadContainer);
+
+                // Generate the blob URL for the PDF
+                const blobUrl = doc.output("bloburl");
+                downloadButton.href = blobUrl;
+
+                // Enable pointer events now that the PDF is ready
+                downloadButton.style.pointerEvents = "auto";
+              } else if (completedCount < totalCount) {
+                doc.addPage();
+              }
+            });
+        }
+      );
+    } catch (err) {
+      console.log(err.message);
+    }
+  }, 1000);
+}
+
+function dynamicSort(array, key, order = "asc") {
+  return array.sort((a, b) => {
+    if (a[key] === undefined || b[key] === undefined) {
+      throw new Error(`Property '${key}' does not exist on some objects`);
+    }
+
+    if (order === "asc") {
+      return a[key] > b[key] ? 1 : a[key] < b[key] ? -1 : 0;
+    } else if (order === "desc") {
+      return a[key] < b[key] ? 1 : a[key] > b[key] ? -1 : 0;
+    }
+
+    throw new Error("Invalid sort order: use 'asc' or 'desc'");
+  });
+}
+
+function extractTableDataByDOM(table) {
+  if (!table) {
+    console.error("Table not found");
+    return;
+  }
+
+  // Extract Header Rows
+  let headers = table.querySelectorAll("thead th");
+  let headerData = Array.from(headers).map((th) => th.textContent.trim());
+
+  // Extract Body Rows
+  let bodyRows = table.querySelectorAll("tbody tr");
+  let bodyData = Array.from(bodyRows).map((tr) => {
+    let cells = tr.querySelectorAll("td");
+    let rowData = [];
+    cells.forEach((td, index) => {
+      if (headerData[index] === "Ad Image") {
+        const img = td.querySelector("img");
+        rowData.push(td.querySelector("img").src);
+      } else {
+        rowData.push(td.textContent.trim());
+      }
+    });
+    return rowData;
+  });
+
+  let footers = table.querySelectorAll("tfoot td");
+  let footerData = Array.from(footers).map((th) => th.textContent.trim());
+
+  return {
+    headers: [headerData],
+    body: bodyData,
+    footers: [footerData],
+  };
+}
+
+function loadImageAsBase64(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+
+    img.onload = function () {
+      const canvas = document.getElementById("myCanvas");
+      const ctx = canvas.getContext("2d");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+      try {
+        const dataURL = canvas.toDataURL("image/png");
+        resolve({ dataURL, width: img.width, height: img.height });
+      } catch (e) {
+        console.error("error", e);
+        reject(e);
+      }
+    };
+    img.onerror = function () {
+      reject(new Error(`Failed to load image at ${url}`));
+    };
+
+    img.src = url;
+  });
 }
