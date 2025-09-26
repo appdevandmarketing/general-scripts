@@ -62,7 +62,7 @@ const FIELD_AD_NUMBER = "Ad Number";
 const FIELD_IMPRESSIONS = "Impressions";
 const FIELD_CLICKS = "Clicks";
 const FIELD_CTR = "CTR";
-const FIELD_GA_RAIN_EVENTS = "Conv.";
+const FIELD_GA_RAIN_EVENTS = "GA4 RAIN Conversions";
 const FIELD_CONV_RATE = "Conv Rate";
 const FIELD_CAMPAIGN_NAME = "Campaign Name";
 const FIELD_CAMPAIGN_NAME_H = "Campaign Name (h)";
@@ -75,13 +75,6 @@ const FIELD_BID_STRATEGY_H = "Bid Strategy (h)";
 const FIELD_X_AUTH_TOKEN = "Supernova X Auth Token (Calc)";
 const FIELD_RAIN_PERFORMANCE_SCORE = "RAIN Performance Score";
 const BID_STRATEGY_FOR_PAID_SEARCH = ["Paid Search", "Search"];
-const FIELD_FACEBOOK_CREATIVE_POST_LINK = "Facebook Creative Post Link";
-const FIELD_LINKS = "Post Link";
-
-const FULL_TITLES = {
-    [FIELD_GA_RAIN_EVENTS]: "GA4 Rain Conversions",
-
-}
 
 // Check for audio type, Code : C
 function endsWithCOrCAndNumbers(str) {
@@ -94,8 +87,36 @@ const AGGREGATION_SKIP_DIMENSIONS = [
     FIELD_CAMPAIGN_NUMBER_H,
     FIELD_BID_STRATEGY_H,
     FIELD_X_AUTH_TOKEN,
-    FIELD_FACEBOOK_CREATIVE_POST_LINK
 ];
+
+
+function waitForLibraries() {
+    return new Promise((resolve, reject) => {
+        let attempts = 0;
+        const maxAttempts = 20;
+
+        function check() {
+            attempts++;
+            if (window.jspdf && window.jspdf.jsPDF) {
+                const testDoc = new window.jspdf.jsPDF();
+                if (typeof testDoc.autoTable === 'function') {
+                    resolve();
+                    return;
+                }
+            }
+
+            if (attempts >= maxAttempts) {
+                reject(new Error('Libraries not available after timeout'));
+                return;
+            }
+
+            setTimeout(check, 100);
+        }
+
+        check();
+    });
+}
+
 
 const CALCULATED_VALUES = {
     [FIELD_RAIN_PERFORMANCE_SCORE]: (
@@ -166,11 +187,11 @@ const CALCULATED_VALUES = {
         if (istotalField) return "Total";
 
         if (row[FIELD_AD_NUMBER] === "Unattributed") {
-            return `<img src="${ALERT_ICON_URL}" alt="Error" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;" onload="onImageLoaded(this)" crossorigin="anonymous"></img>`;
+            return `<img src="${ALERT_ICON_URL}" alt="Error" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"   onload="onImageLoaded(this)" crossorigin="anonymous"></img>`;
         }
 
         if (row[FIELD_AD_NUMBER].endsWith("A")) {
-            return `<img src="${ICON_URL_CODE_OUTLINE}" alt="Video" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;" onload="onImageLoaded(this)" crossorigin="anonymous"></img>`;
+            return `<img src="${ICON_URL_CODE_OUTLINE}" alt="Video" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"   onload="onImageLoaded(this)" crossorigin="anonymous"></img>`;
         }
 
         if (
@@ -178,13 +199,13 @@ const CALCULATED_VALUES = {
             datoRows.length > 0 &&
             BID_STRATEGY_FOR_PAID_SEARCH.includes(datoRows[0][FIELD_BID_STRATEGY_H])
         ) {
-            return `<img src="${SEARCH_AD_ICON_URL}" alt="Error" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;" onload="onImageLoaded(this)" crossorigin="anonymous"></img>`;
+            return `<img src="${SEARCH_AD_ICON_URL}" alt="Error" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"  onload="onImageLoaded(this)" crossorigin="anonymous"></img>`;
         } else if (
             datoRows != null &&
             datoRows.length > 0 &&
             endsWithCOrCAndNumbers(datoRows[0][FIELD_AD_NUMBER])
         ) {
-            return `<img src="${AUDIO_AD_ICON_URL}" alt="Error" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;" onload="onImageLoaded(this)" crossorigin="anonymous"></img>`;
+            return `<img src="${AUDIO_AD_ICON_URL}" alt="Error" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"  onload="onImageLoaded(this)"  crossorigin="anonymous"></img>`;
         }
 
         if (adKey in adLinks) {
@@ -197,38 +218,16 @@ const CALCULATED_VALUES = {
                 );
 
                 if (imageAds.length > 0) {
-                    return `<img src="${imageAds[0].url}" alt="${imageAds[0].adFileName}" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: cover;" onload="onImageLoaded(this)" crossorigin="anonymous"></img>`;
+                    return `<img src="${imageAds[0].url}" alt="${imageAds[0].adFileName}" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: cover;"  onload="onImageLoaded(this)" crossorigin="anonymous"></img>`;
                 } else if (videoAds.length > 0) {
-                    return `<img src="${VIDEO_PLAYER_ICON_URL}" alt="Video" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;" onload="onImageLoaded(this)" crossorigin="anonymous"></img>`;
+                    return `<img src="${VIDEO_PLAYER_ICON_URL}" alt="Video" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"  onload="onImageLoaded(this)"  crossorigin="anonymous"></img>`;
                 } else if (animatedAds.length > 0) {
-                    return `<img src="${ICON_URL_CODE_OUTLINE}" alt="Video" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;" onload="onImageLoaded(this)" crossorigin="anonymous"></img>`;
+                    return `<img src="${ICON_URL_CODE_OUTLINE}" alt="Video" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"  onload="onImageLoaded(this)"  crossorigin="anonymous"></img>`;
                 }
             }
         }
-        return `<img src="${ALERT_ICON_URL}" alt="Error" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;" onload="onImageLoaded(this)" crossorigin="anonymous"></img>`;
+        return `<img src="${ALERT_ICON_URL}" alt="Error" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;"  onload="onImageLoaded(this)" crossorigin="anonymous"></img>`;
     },
-    [FIELD_LINKS]: (
-        row,
-        datoFieldIndex,
-        adLinks,
-        istotalField,
-        datoRows = []
-    ) => {
-        if(Array.isArray(datoRows) && datoRows.length == 0) return '';
-
-        let html = "";
-
-        let linkCount = 1;
-        datoRows.forEach((_row, idx) => {
-            if(_row[FIELD_FACEBOOK_CREATIVE_POST_LINK]) {
-                html += `<div> <a  href="${_row[FIELD_FACEBOOK_CREATIVE_POST_LINK]}"> Link ${linkCount} </a> </div>`;
-                linkCount++;
-            }
-
-        })
-
-        return `<div style="max-height: 80px; overflow-y: auto"> ${html} </div>`;
-    }
 };
 
 const FIELD_DATA_FORMATTER = {
@@ -254,7 +253,6 @@ const MEASUREMENTS_TO_DISPLAY = [
     FIELD_GA_RAIN_EVENTS,
     FIELD_CONV_RATE,
     FIELD_RAIN_PERFORMANCE_SCORE,
-    FIELD_LINKS
 ];
 
 const DATO_TO_API_DATA_FUSION = {
@@ -280,10 +278,10 @@ const LOADER_HTML_WITH_CLASS = (klass) => {
 const FLOATING_DOWNLOAD_BUTTON = (href, fileName) => {
     return `
   <div id="downloadButtonContainer" style="position: fixed; right:7%; bottom:0; z-index: 9999;">
-    <a 
-      id="downloadLink" 
-      style="display: block; text-decoration: underline; font-size: 14px; font-weight: bold;" 
-      href="${href}" 
+    <a
+      id="downloadLink"
+      style="display: block; text-decoration: underline; font-size: 14px; font-weight: bold;"
+      href="${href}"
       download="${fileName}">
       Export PDF
     </a>
@@ -298,7 +296,7 @@ const FLOATING_DOWNLOAD_BUTTON = (href, fileName) => {
 const RAIN_LOGO_URL = `https://cdn1.rainlocal.com/asset/icon/generic/rain-logo-blue-no-name.png`;
 
 const RAIN_LOGO_ELEMENT = `
-  <img src="${RAIN_LOGO_URL}" crossorigin="anonymous" style="display: hidden;" onload="onImageLoaded(this)"></img>`;
+  <img src="${RAIN_LOGO_URL}" crossorigin="anonymous" style="display: hidden;"  onload="onImageLoaded(this)" ></img>`;
 
 const LOADER_HTML = LOADER_HTML_WITH_CLASS("loading");
 const HIDDEN_CANVAS_ELEMENT = `<canvas id="myCanvas" style="display: none;"></canvas>`;
@@ -840,10 +838,8 @@ function buildHtmlTable(allFields, aggregatedData, buildByKey = true) {
     {
         html += `<thead><tr>`;
         allFields.forEach((field) => {
-            const tooltip = FULL_TITLES[field] ? `title="${FULL_TITLES[field]}"` : '';
-            html += `<th ${tooltip}>${field}</th>`;
+            html += `<th>${field}</th>`;
         });
-
     }
     {
         html += "<tbody>";
@@ -1085,10 +1081,16 @@ function generatePdf(
     direction
 ) {
     const query = DA.query.getQuery();
-    setTimeout(() => {
+    setTimeout(async () => {
         try {
-            const doc = new window.jspdf.jsPDF();
+            // const doc = new window.jspdf.jsPDF();
+            await waitForLibraries();
+
+            const { jsPDF } = window.jspdf || window;
+            const doc = new jsPDF();
+
             const startDate = query.date.startDate;
+
             const endDate = query.date.endDate;
             const imageWidth = 12;
             const imageHeight = 21;
@@ -1108,8 +1110,6 @@ function generatePdf(
                     aggData.rows = sortedRows;
 
                     const html = buildHtmlTable(allFields, aggData, false);
-                    console.log(JSON.stringify(html));
-
                     const parser = new DOMParser();
                     const dom = parser.parseFromString(html, "text/html");
                     const tableData = extractTableDataByDOM(dom);
@@ -1248,7 +1248,8 @@ function generatePdf(
                 }
             );
         } catch (err) {
-            console.log(err.message);
+            console.error("error while parsing", err);
+            $("#creativeImageGallery").append(`<strong> Error generating PDF </strong>`);
         }
     }, 1000);
 }
