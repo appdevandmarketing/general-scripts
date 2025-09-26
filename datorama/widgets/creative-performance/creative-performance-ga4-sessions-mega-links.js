@@ -841,8 +841,10 @@ function buildHtmlTable(allFields, aggregatedData, buildByKey = true) {
     {
         html += `<thead><tr>`;
         allFields.forEach((field) => {
-            html += `<th>${field}</th>`;
+            const tooltip = FULL_TITLES[field] ? `title="${FULL_TITLES[field]}"` : '';
+            html += `<th ${tooltip}>${field}</th>`;
         });
+
     }
     {
         html += "<tbody>";
