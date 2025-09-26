@@ -80,6 +80,8 @@ const FIELD_LINKS = "Post Link";
 
 const FULL_TITLES = {
     [FIELD_GA_RAIN_EVENTS]: "GA4 Rain Conversions",
+    [FIELD_LINKS] : "Meta Post Links",
+    [FIELD_CONV_RATE]: "Conversion Rate",
 
 }
 
@@ -221,7 +223,7 @@ const CALCULATED_VALUES = {
         let linkCount = 1;
         datoRows.forEach((_row, idx) => {
             if(_row[FIELD_FACEBOOK_CREATIVE_POST_LINK]) {
-                html += `<div> <a  href="${_row[FIELD_FACEBOOK_CREATIVE_POST_LINK]}"> Link ${linkCount} </a> </div>`;
+                html += `<div> <a  href="${_row[FIELD_FACEBOOK_CREATIVE_POST_LINK]}" target="_blank"> Link ${linkCount} </a> </div>`;
                 linkCount++;
             }
 
