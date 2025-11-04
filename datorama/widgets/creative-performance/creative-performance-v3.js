@@ -63,7 +63,7 @@ const FIELD_IMPRESSIONS = "Impressions";
 const FIELD_CLICKS = "Clicks";
 const FIELD_CTR = "CTR";
 const FIELD_GA_RAIN_EVENTS = "Conv.";
-const FIELD_CONV_RATE = "Conv Rate";
+const FIELD_CONV_RATE = "CVR";
 const FIELD_CAMPAIGN_NAME = "Campaign Name";
 const FIELD_CAMPAIGN_NAME_H = "Campaign Name (h)";
 const FIELD_AD_TYPE = "Ad Type";
@@ -71,7 +71,8 @@ const FIELD_AD_CONTENT = "Ad Content";
 const FIELD_AD_SIZE = "Ad Size";
 const FIELD_AD_THUMBNAIL = "Ad Image";
 const FIELD_CLICKS_RI = "Clicks - RI";
-const FIELD_BID_STRATEGY_H = "Bid Strategy (h)";
+// const FIELD_BID_STRATEGY_H = "Bid Strategy (h)";
+const FIELD_CAMPAIGN_CATEGORY = "Campaign Category";
 const FIELD_X_AUTH_TOKEN = "Supernova X Auth Token (Calc)";
 const FIELD_RAIN_PERFORMANCE_SCORE = "RAIN Performance Score";
 const BID_STRATEGY_FOR_PAID_SEARCH = ["Paid Search", "Search"];
@@ -94,7 +95,8 @@ const AGGREGATION_SKIP_DIMENSIONS = [
     FIELD_CAMPAIGN_NAME,
     FIELD_CAMPAIGN_NAME_H,
     FIELD_CAMPAIGN_NUMBER_H,
-    FIELD_BID_STRATEGY_H,
+    // FIELD_BID_STRATEGY_H,
+    FIELD_CAMPAIGN_CATEGORY,
     FIELD_X_AUTH_TOKEN,
     FIELD_FACEBOOK_CREATIVE_POST_LINK
 ];
@@ -109,17 +111,17 @@ const CALCULATED_VALUES = {
         allObjects
     ) => {
         try {
-            const bidStrategy = datoRows[0][FIELD_BID_STRATEGY_H];
+            const bidStrategy = datoRows[0][FIELD_CAMPAIGN_CATEGORY];
             const impressionScoreWeight = 0.15;
             const ctrScoreWeight = 0.55;
             const conversionScoreWeight = 0.3;
 
             const bidStrategies = Object.entries(allObjects)
                 .flatMap(([key, list]) => list)
-                .map((it) => it[FIELD_BID_STRATEGY_H]);
-            //.filter(it => it[FIELD_BID_STRATEGY_H] == bidStrategy).reduce((acc, r) => acc + r[FIELD_IMPRESSIONS], 0)
+                .map((it) => it[FIELD_CAMPAIGN_CATEGORY]);
+            //.filter(it => it[FIELD_CAMPAIGN_CATEGORY] == bidStrategy).reduce((acc, r) => acc + r[FIELD_IMPRESSIONS], 0)
 
-            // const totalImpressions = istotalField ? row[FIELD_IMPRESSIONS] : Object.entries(allObjects).flatMap(([key, list]) => list).filter(it => it[FIELD_BID_STRATEGY_H] == bidStrategy).reduce((acc, r) => acc + r[FIELD_IMPRESSIONS], 0)
+            // const totalImpressions = istotalField ? row[FIELD_IMPRESSIONS] : Object.entries(allObjects).flatMap(([key, list]) => list).filter(it => it[FIELD_CAMPAIGN_CATEGORY] == bidStrategy).reduce((acc, r) => acc + r[FIELD_IMPRESSIONS], 0)
             const totalImpressions = istotalField
                 ? row[FIELD_IMPRESSIONS]
                 : Object.entries(allObjects)
@@ -178,7 +180,7 @@ const CALCULATED_VALUES = {
         if (
             datoRows != null &&
             datoRows.length > 0 &&
-            BID_STRATEGY_FOR_PAID_SEARCH.includes(datoRows[0][FIELD_BID_STRATEGY_H])
+            BID_STRATEGY_FOR_PAID_SEARCH.includes(datoRows[0][FIELD_CAMPAIGN_CATEGORY])
         ) {
             return `<img src="${SEARCH_AD_ICON_URL}" alt="Error" width="${thumbWidth}" height="${thumbHeight}" style="object-fit: scale-down;" onload="onImageLoaded(this)" crossorigin="anonymous"></img>`;
         } else if (
@@ -296,6 +298,8 @@ const FLOATING_DOWNLOAD_BUTTON = (href, fileName) => {
   </div>
   `;
 };
+
+
 
 const RAIN_LOGO_URL = `https://cdn1.rainlocal.com/asset/icon/generic/rain-logo-blue-no-name.png`;
 
@@ -1110,12 +1114,13 @@ function generatePdf(
                     aggData.rows = sortedRows;
 
                     const html = buildHtmlTable(allFields, aggData, false);
-                    console.log(JSON.stringify(html));
 
                     const parser = new DOMParser();
                     const dom = parser.parseFromString(html, "text/html");
                     const tableData = extractTableDataByDOM(dom);
                     const urls = tableData.body.map((row) => row[0]);
+
+
                     const promises = urls.map((url) => loadImageAsBase64(url));
 
                     Promise.all(promises).then((images) => {
@@ -1148,6 +1153,17 @@ function generatePdf(
                                 0: {
                                     cellWidth: imageWidth + 2 * cellPadding + 10,
                                 },
+                            },
+                            didParseCell: (data) => {
+                                if (data.section === 'body' && data.column.index === 7) {
+                                    // Clear the default cell text
+                                    data.cell.text = [''];
+
+                                    const linkCount = data.cell.raw.split(',').length;
+                                    const lineHeight = 9;
+                                    data.cell.styles.minCellHeight = linkCount * lineHeight;
+
+                                }
                             },
                             didDrawCell: function (data) {
                                 if (data.column.index === 0 && data.cell.section === "body") {
@@ -1186,6 +1202,40 @@ function generatePdf(
                                         adjustedWidth,
                                         adjustedHeight
                                     );
+                                }
+                                // Index 7 refers to post link, which is the last column
+                                // Could find other references to refer this.
+                                if (data.column.index === 7 && data.cell.section === "body") {
+
+                                    const {x, y} = data.cell
+                                    doc.setTextColor(0, 102, 204); // blue link color
+
+                                    const lineHeight = 9; // since this will take the full height
+
+
+                                    const fontSize = 9;
+
+                                    const links = data.cell.raw.split(',').filter(l => l.includes('http'));
+                                    // for further formating
+                                    const cellHeight = links.length * lineHeight;
+                                    // total height occupied by all links
+                                    const totalLinksHeight = links.length * lineHeight;
+
+                                    // starting Y position so the block is vertically centered
+                                    const startY = links.length > 1 ?  y + (cellHeight - totalLinksHeight) / 2 + fontSize :  y + (cellHeight - totalLinksHeight) / 2 + fontSize + 5.5;
+
+                                    links.forEach((link, idx) => {
+                                        const text = `Link ${idx + 1}`;
+                                        const textWidth = doc.getTextWidth(text);
+                                        const x_offset = 0;
+                                        const y_offset = startY + idx * (lineHeight - 1);
+
+                                        // horizontally center if you want:
+                                        // const x_offset = (cellWidth - textWidth) / 2;
+
+                                        doc.text(text, x + x_offset, y_offset - 1);
+                                        doc.link(x + x_offset, y_offset - fontSize, textWidth, fontSize, { url: link });
+                                    });
                                 }
                             },
 
@@ -1290,7 +1340,15 @@ function extractTableDataByDOM(table) {
             if (headerData[index] === "Ad Image") {
                 const img = td.querySelector("img");
                 rowData.push(td.querySelector("img").src);
-            } else {
+            } else if (headerData[index] === "Post Link") {
+                const links = td.querySelectorAll("a");
+                if (links.length > 0) {
+                    rowData.push(Array.from(links).map(link => link.href).join(","));
+                } else {
+                    rowData.push(td.textContent);
+                }
+            }
+            else {
                 rowData.push(td.textContent.trim());
             }
         });
